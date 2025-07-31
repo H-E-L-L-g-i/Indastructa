@@ -1,4 +1,2 @@
 setuptools==80.9.0
 pytest~=8.4.1
-requests~=2.32.4
-toml~=0.10.2
