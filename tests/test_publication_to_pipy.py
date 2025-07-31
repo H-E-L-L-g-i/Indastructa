@@ -7,6 +7,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 PYPI_URL_TEMPLATE = "https://test.pypi.org/pypi/{package_name}/{version}/json"
 PYPI_HOST_NAME = "TestPyPI"
 
+
 @pytest.mark.network
 def test_version_is_not_published():
     """
@@ -25,15 +26,19 @@ def test_version_is_not_published():
     assert current_version, "Version is not defined in 'pyproject.toml'"
 
     # 2. Form the URL for the PyPI JSON API
-    pypi_url = PYPI_URL_TEMPLATE.format(package_name=package_name, version=current_version)
+    pypi_url = PYPI_URL_TEMPLATE.format(
+        package_name=package_name, version=current_version
+    )
 
     # 3. Make the request and check the response code
     print(f"Checking for version {current_version} on {PYPI_HOST_NAME}...")
     try:
         response = requests.get(pypi_url, timeout=10)
     except requests.exceptions.RequestException as e:
-        pytest.skip(f"Could not connect to {PYPI_HOST_NAME}."
-                    f" Skipping network test. Error: {e}")
+        pytest.skip(
+            f"Could not connect to {PYPI_HOST_NAME}."
+            f" Skipping network test. Error: {e}"
+        )
 
     # 4. If the version exists (200 OK), fail with a clean, formatted message.
     if response.status_code == 200:
@@ -57,5 +62,5 @@ def test_version_is_not_published():
         pytest.fail(
             f"Received an unexpected status code ({response.status_code}) from\n"
             f" {PYPI_HOST_NAME}.",
-            pytrace=False
+            pytrace=False,
         )
