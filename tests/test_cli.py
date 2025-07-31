@@ -1,13 +1,11 @@
 import pytest
 from pathlib import Path
 import sys
+from indastructa_pkg.cli import main, format_dir_structure
 
 # Add the project root to the path to allow importing the package
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
-
-# Import from your package
-from indastructa_pkg.cli import format_dir_structure, main
 
 
 @pytest.fixture
