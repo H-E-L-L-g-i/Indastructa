@@ -36,21 +36,20 @@ def test_version_is_not_published():
         response = requests.get(pypi_url, timeout=10)
     except requests.exceptions.RequestException as e:
         pytest.skip(
-            f"Could not connect to {PYPI_HOST_NAME}."
-            f" Skipping network test. Error: {e}"
+            f"Could not connect to {PYPI_HOST_NAME}. Skipping network test. Error: {e}"
         )
 
     # 4. If the version exists (200 OK), fail with a clean, formatted message.
     if response.status_code == 200:
         # Create a user-friendly failure message
         fail_message = (
-            f"\n\n{'-'*28} RELEASE CHECK FAILED {'-'*28}\n"
+            f"\n\n{'-' * 28} RELEASE CHECK FAILED {'-' * 28}\n"
             f"Reason:  Version {current_version} of package '{package_name}' "
             f"already exists on {PYPI_HOST_NAME}.\n"
             f"Action:  Please increment the version in 'pyproject.toml'"
             f" before releasing.\n"
             f"URL:     {pypi_url.replace('/json', '')}\n"
-            f"{'-'*77}"
+            f"{'-' * 77}"
         )
         # Fail the test without showing a Python traceback
         pytest.fail(fail_message, pytrace=False)
