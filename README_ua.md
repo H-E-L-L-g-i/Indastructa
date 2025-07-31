@@ -44,7 +44,7 @@ pip install indastructa
 
 ```text
 
-cd /шлях/до/вашого/проєкту 
+cd /шлях/до/вашого/проєкту
 
 indastructa
 ```

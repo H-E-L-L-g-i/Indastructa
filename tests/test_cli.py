@@ -59,7 +59,7 @@ def test_main_with_exclusions(project_structure: Path, monkeypatch):
     output_file = project_structure / "project_structure.txt"
 
     # Imitate the command: 'indastructa /path/to/test_project'
-    monkeypatch.setattr('sys.argv', ['indastructa', str(project_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure)])
 
     main()
 
@@ -83,8 +83,9 @@ def test_main_with_depth_limit(project_structure: Path, monkeypatch):
     Tests the --depth argument.
     """
     output_file = project_structure / "project_structure.txt"
-    monkeypatch.setattr('sys.argv',
-                        ['indastructa', str(project_structure), "--depth", "1"])
+    monkeypatch.setattr(
+        "sys.argv", ["indastructa", str(project_structure), "--depth", "1"]
+    )
 
     main()
 
@@ -102,8 +103,9 @@ def test_main_with_custom_exclude(project_structure: Path, monkeypatch):
     Tests the --exclude argument.
     """
     output_file = project_structure / "project_structure.txt"
-    monkeypatch.setattr('sys.argv',
-                        ['indastructa', str(project_structure), "--exclude", "src"])
+    monkeypatch.setattr(
+        "sys.argv", ["indastructa", str(project_structure), "--exclude", "src"]
+    )
 
     main()
 

@@ -54,7 +54,7 @@ If your project structure looks like this:
 
 indastructa will generate:
 
-```text 
+```text
 
     my_project
     ├── src
@@ -64,7 +64,7 @@ indastructa will generate:
     │   └── test_main.py
     ├── .gitignore
     └── README.md
-    
+
     The project structure is saved to the file: `project_structure.txt`
 ```
 

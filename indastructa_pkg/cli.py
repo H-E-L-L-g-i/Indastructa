@@ -9,16 +9,35 @@ OUTPUT_FILENAME: Path = Path("project_structure.txt")
 
 # Base set of files and directories to ignore.
 EXCLUDE_SET: Set[str] = {
-    ".git", ".idea", ".vscode", ".history", "logs", ".DS_Store",
-    "__pycache__", ".ruff_cache", ".venv", "venv", "Scripts",
-    "*.pyc", "*.egg-info", "node_modules", "dist", "build", ".next",
-    "migrations", "migrations.py", "migrations_old",
-    ".env", ".idea_modules", "atlassian-ide-plugin.xml",
+    ".git",
+    ".idea",
+    ".vscode",
+    ".history",
+    "logs",
+    ".DS_Store",
+    "__pycache__",
+    ".ruff_cache",
+    ".venv",
+    "venv",
+    "Scripts",
+    "*.pyc",
+    "*.egg-info",
+    "node_modules",
+    "dist",
+    "build",
+    ".next",
+    "migrations",
+    "migrations.py",
+    "migrations_old",
+    ".env",
+    ".idea_modules",
+    "atlassian-ide-plugin.xml",
 }
 
 
-def get_patterns_from_ignore_files(directory: Path, ignore_filenames: List[str]) -> Set[
-    str]:
+def get_patterns_from_ignore_files(
+    directory: Path, ignore_filenames: List[str]
+) -> Set[str]:
     """
     Reads multiple ignore files (e.g., .gitignore, .dockerignore) from a directory
     and returns a combined set of unique patterns.
@@ -52,11 +71,11 @@ def is_excluded(path: Path, exclude_patterns: Set[str]) -> bool:
 
 
 def format_dir_structure(
-        root_path: Path,
-        exclude_patterns: Set[str],
-        prefix: str = "",
-        max_depth: int = -1,
-        current_depth: int = 0
+    root_path: Path,
+    exclude_patterns: Set[str],
+    prefix: str = "",
+    max_depth: int = -1,
+    current_depth: int = 0,
 ) -> str:
     """
     Recursively builds a string representation of a directory structure.
@@ -69,14 +88,15 @@ def format_dir_structure(
         filtered_items = [
             path for path in all_path_items if not is_excluded(path, exclude_patterns)
         ]
-        sorted_items = sorted(filtered_items,
-                              key=lambda p: (p.is_file(), p.name.lower()))
+        sorted_items = sorted(
+            filtered_items, key=lambda p: (p.is_file(), p.name.lower())
+        )
     except (FileNotFoundError, PermissionError):
         return ""
 
     parts = []
     for i, item in enumerate(sorted_items):
-        is_last = (i == len(sorted_items) - 1)
+        is_last = i == len(sorted_items) - 1
         connector = "  +-- " if is_last else "  |-- "
         item_display_name = f"{item.name}{'/' if item.is_dir() else ''}"
         parts.append(f"{prefix}{connector}{item_display_name}")
@@ -109,24 +129,20 @@ def main() -> None:
         "path",
         nargs="?",
         default=str(PROJECT_DIR),
-        help="The path to the directory to scan. Defaults to the current directory."
+        help="The path to the directory to scan. Defaults to the current directory.",
     )
-    parser.add_argument(
-        "--depth",
-        type=int,
-        default=-1,
-        help="Maximum depth to scan."
-    )
+    parser.add_argument("--depth", type=int, default=-1, help="Maximum depth to scan.")
     parser.add_argument(
         "--exclude",
-        nargs='*',
+        nargs="*",
         default=[],
-        help="Additional files or directories to exclude."
+        help="Additional files or directories to exclude.",
     )
     parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         default=str(OUTPUT_FILENAME.name),
-        help="Name of the output file."
+        help="Name of the output file.",
     )
 
     args = parser.parse_args()
@@ -142,7 +158,7 @@ def main() -> None:
 
     ignore_files = [".gitignore", ".dockerignore"]
     ignore_patterns = get_patterns_from_ignore_files(project_dir, ignore_files)
-    final_exclude_patterns.update(p.strip('/') for p in ignore_patterns)
+    final_exclude_patterns.update(p.strip("/") for p in ignore_patterns)
 
     final_exclude_patterns.update(args.exclude)
 
