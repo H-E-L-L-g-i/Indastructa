@@ -64,11 +64,11 @@ jobs:
       # We check that the 'dev'-version is available in Testpypi
       - name: Check dev version availability
         run: |
-          base_version=$(toml get pyproject.toml project.version)
+          base_version=$(toml get --toml-path pyproject.toml project.version)
           dev_version="${base_version}.dev${{ github.run_number }}"
 
           # Temporarily install DEV version
-          toml set pyproject.toml project.version "$dev_version"
+          toml set --toml-path pyproject.toml project.version "$dev_version"
 
           # Check Testpypi
           PYPI_TARGET=testpypi pytest tests/test_publication_to_pipy.py::test_version_is_not_published -v
@@ -92,10 +92,10 @@ jobs:
           pip install build twine toml-cli
       - name: Bump version for dev build
         run: |
-          base_version=$(toml get pyproject.toml project.version)
+          base_version=$(toml get --toml-path pyproject.toml project.version)
           new_version="${base_version}.dev${{ github.run_number }}"
           echo "Bumping version to ${new_version} for TestPyPI release"
-          toml set pyproject.toml project.version ${new_version}
+          toml set --toml-path pyproject.toml project.version ${new_version}
       - name: Build package
         run: python -m build
       - name: Publish package to TestPyPI
