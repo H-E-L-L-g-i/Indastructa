@@ -66,14 +66,14 @@ jobs:
         run: |
           base_version=$(toml get pyproject.toml project.version)
           dev_version="${base_version}.dev${{ github.run_number }}"
-          
+
           # Temporarily install DEV version
           toml set pyproject.toml project.version "$dev_version"
-          
+
           # Check Testpypi
           PYPI_TARGET=testpypi pytest tests/test_publication_to_pipy.py::test_version_is_not_published -v
 
-  # Job 4: Publish to TestPyPI if tests pass and it's a push to 'dev'
+  # Job 4: Publish to TestPyPI if tests pass, and it's a push to 'dev'
   publish-to-testpypi:
     runs-on: ubuntu-latest
     needs: [test, check-version]  # This job will only start if the 'test' and 'check-version' job succeeds
