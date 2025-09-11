@@ -18,11 +18,26 @@ Perfect for documentation, technical reviews, architecture discussions, or blog 
 
 ## Installation
 
+You can install `indastructa` from PyPI or TestPyPI.
+
+**Stable Version (from PyPI)**
+
+This is the recommended way to install the latest stable release.
+
 ```text
 
 pip install indastructa
 
 ```
+
+**Development Version (from TestPyPI)**
+
+To install the latest pre-release version from our test repository:
+
+```text
+pip install --index-url https://test.pypi.org/simple/ indastructa
+```
+
 ---
 
 ## How to Use

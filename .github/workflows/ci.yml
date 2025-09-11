@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
+        python-version: [ "3.10", "3.11", "3.12" ]
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -66,11 +66,15 @@ jobs:
         run: |
           base_version=$(toml get --toml-path pyproject.toml project.version)
           dev_version="${base_version}.dev${{ github.run_number }}"
+          echo "Calculated dev version to check: $dev_version"
 
-          # Temporarily install DEV version
+          # Temporarily set the dev version to check if it's already published
+          echo "Temporarily set the dev version $dev_version in pyproject.toml file
+          to check if it's already published ..."
           toml set --toml-path pyproject.toml project.version "$dev_version"
-
+          
           # Check Testpypi
+          echo "Checking if the version is already published on TestPyPI..."
           PYPI_TARGET=testpypi pytest tests/test_publication_to_pipy.py::test_version_is_not_published -v
 
   # Job 4: Publish to TestPyPI if tests pass, and it's a push to 'dev'
