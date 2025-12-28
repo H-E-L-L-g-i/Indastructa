@@ -47,8 +47,8 @@ def get_patterns_from_ignore_files(
     all_patterns: Set[str] = set()
     for filename in ignore_filenames:
         ignore_file_path = directory / filename
-        if ignore_file_path.is_file():
-            try:
+        try:
+            if ignore_file_path.is_file():
                 with ignore_file_path.open("r", encoding="utf-8") as f:
                     patterns = {
                         line.strip()
@@ -56,14 +56,12 @@ def get_patterns_from_ignore_files(
                         if line.strip() and not line.strip().startswith("#")
                     }
                     all_patterns.update(patterns)
-            except IOError:
-                continue
+        except (IOError, PermissionError):
+            continue
     return all_patterns
 
 
-def is_excluded(
-    path: Path, exclude_patterns: Set[str], include_patterns: Set[str]
-) -> bool:
+def is_excluded(path: Path, exclude_patterns: Set[str], include_patterns: Set[str]) -> bool:
     """
     Checks if a given path should be excluded based on include and exclude patterns.
     Include patterns have higher priority.
@@ -77,7 +75,7 @@ def is_excluded(
     for pattern in exclude_patterns:
         if fnmatch.fnmatch(path.name, pattern):
             return True
-
+            
     return False
 
 
@@ -98,9 +96,7 @@ def format_dir_structure(
     try:
         all_path_items = root_path.iterdir()
         filtered_items = [
-            path
-            for path in all_path_items
-            if not is_excluded(path, exclude_patterns, include_patterns)
+            path for path in all_path_items if not is_excluded(path, exclude_patterns, include_patterns)
         ]
         sorted_items = sorted(
             filtered_items, key=lambda p: (p.is_file(), p.name.lower())
@@ -119,12 +115,7 @@ def format_dir_structure(
             new_prefix = prefix + ("      " if is_last else "  |   ")
             parts.append(
                 format_dir_structure(
-                    item,
-                    exclude_patterns,
-                    include_patterns,
-                    new_prefix,
-                    max_depth,
-                    current_depth + 1,
+                    item, exclude_patterns, include_patterns, new_prefix, max_depth, current_depth + 1
                 )
             )
     return "\n".join(parts)
@@ -164,10 +155,10 @@ def main() -> None:
 
               # 6. Perform a dry run without writing to a file
               indastructa --dry-run
-
+              
               # 7. A complex example
               indastructa ./src --depth 3 --exclude "*.pyc" --include ".env" -o structure.md
-        """),
+        """)
     )
     parser.add_argument(
         "path",
@@ -178,14 +169,14 @@ def main() -> None:
     parser.add_argument("--depth", type=int, default=-1, help="Maximum depth to scan.")
     parser.add_argument(
         "--exclude",
-        action="append",
+        action='append',
         nargs="*",
         default=[],
         help="Additional files or directories to exclude, separated by commas.",
     )
     parser.add_argument(
         "--include",
-        action="append",
+        action='append',
         nargs="*",
         default=[],
         help="Files or directories to force include, even if they are in .gitignore.",
@@ -228,16 +219,12 @@ def main() -> None:
     # Flatten the list of lists that argparse creates with action='append'
     flat_excludes = [item for sublist in args.exclude for item in sublist]
     if flat_excludes:
-        exclude_list = [
-            item.strip() for arg in flat_excludes for item in arg.split(",")
-        ]
+        exclude_list = [item.strip() for arg in flat_excludes for item in arg.split(',')]
         final_exclude_patterns.update(exclude_list)
 
     flat_includes = [item for sublist in args.include for item in sublist]
     if flat_includes:
-        include_list = [
-            item.strip() for arg in flat_includes for item in arg.split(",")
-        ]
+        include_list = [item.strip() for arg in flat_includes for item in arg.split(',')]
         final_include_patterns.update(include_list)
 
     final_exclude_patterns.add(args.output)
@@ -245,10 +232,7 @@ def main() -> None:
 
     # --- Generation and Writing ---
     structure_text = format_dir_structure(
-        project_dir,
-        final_exclude_patterns,
-        final_include_patterns,
-        max_depth=args.depth,
+        project_dir, final_exclude_patterns, final_include_patterns, max_depth=args.depth
     )
 
     output_content = f"{project_dir.name}/\n{structure_text}\n"
