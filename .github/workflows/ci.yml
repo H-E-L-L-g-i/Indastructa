@@ -25,14 +25,14 @@ jobs:
       - name: Run pre-commit checks
         run: pre-commit run --all-files
 
-  # Job 2: Run tests across multiple Python versions
+  # Job 2: Run tests across multiple Python versions and upload coverage
   test:
     runs-on: ubuntu-latest
     needs: lint # This job will only start if the 'lint' job succeeds
     strategy:
       fail-fast: false
       matrix:
-        python-version: [ "3.10", "3.11", "3.12" ]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -44,11 +44,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install .
-          pip install pytest requests toml
-      - name: Test with pytest
-        run: pytest -m "not network" # Run all tests EXCEPT the network one
-      - name: Run CLI tests
-        run: pytest tests/test_cli.py
+          pip install pytest requests toml pytest-cov
+      - name: Test with pytest and generate coverage report
+        run: pytest --cov --cov-branch --cov-report=xml -m "not network"
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   # Job 3: Check the version before the modification pyproject.toml
   check-version:
