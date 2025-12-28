@@ -4,6 +4,7 @@ import sys
 import os
 from indastructa_pkg.cli import main, format_dir_structure
 
+# Add the project root to the path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -472,6 +473,30 @@ def test_main_with_custom_output_file(simple_structure: Path, monkeypatch):
     assert custom_file.exists(), "Custom output file was not created"
     assert not default_file.exists(), "Default output file should not be created"
     assert custom_file.stat().st_size > 0
+
+
+def test_main_with_quiet_flag(project_structure: Path, monkeypatch, capsys):
+    """Test that --quiet suppresses all console output on success."""
+    output_file = project_structure / "project_structure.txt"
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure), "--quiet"])
+
+    main()
+
+    assert output_file.exists()
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+def test_main_with_quiet_short_form(project_structure: Path, monkeypatch, capsys):
+    """Test -q short form."""
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure), "-q"])
+
+    main()
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
 
 
 # ============================================================================
