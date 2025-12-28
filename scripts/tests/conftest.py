@@ -19,15 +19,11 @@ def temp_pyproject_toml():
     # Point the script's configuration to the temporary file
     # This is a bit of a hack, but necessary for isolated testing
     import sys
-    sys.modules['release'].PYPROJECT_PATH = TEMP_PYPROJECT_PATH
+
+    sys.modules["release"].PYPROJECT_PATH = TEMP_PYPROJECT_PATH
 
     # Create a simple, temporary pyproject.toml for the test
-    test_config = {
-        "project": {
-            "name": "test-package",
-            "version": "1.0.0"
-        }
-    }
+    test_config = {"project": {"name": "test-package", "version": "1.0.0"}}
     with open(TEMP_PYPROJECT_PATH, "w") as f:
         toml.dump(test_config, f)
 
@@ -38,4 +34,4 @@ def temp_pyproject_toml():
         TEMP_PYPROJECT_PATH.unlink()
 
     # Restore the original path
-    sys.modules['release'].PYPROJECT_PATH = original_pyproject_path_backup
+    sys.modules["release"].PYPROJECT_PATH = original_pyproject_path_backup

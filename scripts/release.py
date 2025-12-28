@@ -29,7 +29,8 @@ def get_project_info() -> tuple[str, str]:
     if not name or not version:
         print(
             "Error: 'name' or 'version' not found in [project] section "
-            " of 'pyproject.toml' file")
+            " of 'pyproject.toml' file"
+        )
         sys.exit(1)
     return name, version
 
@@ -56,8 +57,9 @@ def check_if_version_exists(package_name: str, version: str, repo: str) -> bool:
     Checks if a version of the package already exists on the specified repository.
     """
     if not validate_version_string(version):
-        raise ValueError(f"Incorrect version format: '{version}'. "
-                         f"Must be 'X.Y.Z' or 'X.Y.Z.devN'")
+        raise ValueError(
+            f"Incorrect version format: '{version}'. Must be 'X.Y.Z' or 'X.Y.Z.devN'"
+        )
 
     url = PYPI_URLS[repo].format(package_name=package_name, version=version)
     print(f"Checking for version {version} on {repo.upper()}...")
@@ -69,7 +71,9 @@ def check_if_version_exists(package_name: str, version: str, repo: str) -> bool:
         return False
 
 
-def bump_version(current_version: str, part: Optional[str] = None, bump_dev: bool = False) -> str:
+def bump_version(
+    current_version: str, part: Optional[str] = None, bump_dev: bool = False
+) -> str:
     """Bumps the version string based on the specified part."""
     major, minor, patch, dev_number = parse_version(current_version)
 
@@ -87,8 +91,10 @@ def bump_version(current_version: str, part: Optional[str] = None, bump_dev: boo
                 dev_number = 1 if dev_number is None else dev_number + 1
                 return f"{major}.{minor}.{patch}.dev{dev_number}"
             else:
-                raise ValueError("You must specify a version part ('major', 'minor', 'patch') "
-                                 "or use --dev to bump a dev version.")
+                raise ValueError(
+                    "You must specify a version part ('major', 'minor', 'patch') "
+                    "or use --dev to bump a dev version."
+                )
         case _:
             raise ValueError(f"Unknown version part: {part}")
 
@@ -109,7 +115,7 @@ def update_pyproject_toml(new_version: str):
 
 def print_release_instructions(version: str):
     """Prints the final git commands for the user to run."""
-    instructions = f"""{"\n" + "=" * 60}
+    instructions = f"""\n{"=" * 60}
 NEXT STEPS: Manually create the release commit and tag.
 Run the following commands:
 
@@ -136,32 +142,40 @@ def parse_cli_args(script_name: str):
 
               # 3. Bump minor and start a dev version
               python scripts/{script_name} minor --dev
-              
+
               # 4. Perform a dry run to see the new version without changing any files
               python scripts/{script_name} patch --dry-run
         """),
-        formatter_class=argparse.RawTextHelpFormatter
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
-        "part", nargs="?", choices=["major", "minor", "patch"],
-        help="Optional. The part of the version to increment."
+        "part",
+        nargs="?",
+        choices=["major", "minor", "patch"],
+        help="Optional. The part of the version to increment.",
     )
     parser.add_argument(
-        "--repo", choices=["pypi", "testpypi"], default=DEFAULT_PYPI_REPO,
-        help=f"The repository to check the version against. Defaults to '{DEFAULT_PYPI_REPO}'."
+        "--repo",
+        choices=["pypi", "testpypi"],
+        default=DEFAULT_PYPI_REPO,
+        help=f"The repository to check the version against. Defaults to '{DEFAULT_PYPI_REPO}'.",
     )
     parser.add_argument(
-        "--dev", action="store_true",
-        help="If the current version is a dev version, increment the dev number."
+        "--dev",
+        action="store_true",
+        help="If the current version is a dev version, increment the dev number.",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
-        help="Perform a trial run without changing any files."
+        "--dry-run",
+        action="store_true",
+        help="Perform a trial run without changing any files.",
     )
     return parser.parse_args()
 
 
-def determine_new_version(current_version: str, part: Optional[str], bump_dev: bool) -> str:
+def determine_new_version(
+    current_version: str, part: Optional[str], bump_dev: bool
+) -> str:
     """Decides what the new version should be based on CLI arguments."""
     if not part and bump_dev:
         return bump_version(current_version, part=None, bump_dev=True)
@@ -172,7 +186,9 @@ def check_version_availability(package_name: str, version: str, repo: str):
     """Checks if the version exists on the repo and exits if it does."""
     try:
         if check_if_version_exists(package_name, version, repo):
-            print(f"Error: Version {version} already exists on {repo.upper()}. Please check manually.")
+            print(
+                f"Error: Version {version} already exists on {repo.upper()}. Please check manually."
+            )
             sys.exit(1)
     except ValueError as e:
         print(f"Error: {e}")
@@ -193,7 +209,7 @@ def handle_bump_scenario(args, package_name, current_version):
         return
 
     confirm = input(f"Update pyproject.toml to version {new_version}? (y/n): ")
-    if confirm.lower() == 'y':
+    if confirm.lower() == "y":
         update_pyproject_toml(new_version)
         print_release_instructions(new_version)
     else:
@@ -210,8 +226,10 @@ def handle_check_scenario(args, package_name, current_version):
         print("-- END DRY RUN --")
         return
 
-    confirm = input(f"\nDo you want to prepare a release for this version ('{current_version}')? (y/n): ")
-    if confirm.lower() == 'y':
+    confirm = input(
+        f"\nDo you want to prepare a release for this version ('{current_version}')? (y/n): "
+    )
+    if confirm.lower() == "y":
         print_release_instructions(current_version)
     else:
         print("Aborted by user.")
