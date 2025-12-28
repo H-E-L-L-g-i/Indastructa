@@ -23,9 +23,7 @@ REPOSITORIES = {
 # Defaults to 'testpypi' if the variable is not set.
 TARGET_REPO = os.environ.get("PYPI_TARGET", "testpypi")
 if TARGET_REPO not in REPOSITORIES:
-    pytest.fail(
-        f"Invalid PYPI_TARGET: '{TARGET_REPO}'. Must be one of {list(REPOSITORIES.keys())}"
-    )
+    pytest.fail(f"Invalid PYPI_TARGET: '{TARGET_REPO}'. Must be one of {list(REPOSITORIES.keys())}")
 
 PYPI_CONFIG = REPOSITORIES[TARGET_REPO]
 
@@ -75,12 +73,9 @@ def test_version_is_not_published():
         pytest.fail(fail_message, pytrace=False)
 
     elif response.status_code == 404:
-        print(
-            f"\n\n{'-' * 28} RELEASE CHECK PASSED {'-' * 28}\n"
+        print(f"\n\n{'-' * 28} RELEASE CHECK PASSED {'-' * 28}\n"
             f"Version ' {current_version} ' is available on {pypi_host_name}. OK.\n"
-            f"{'-' * 77}"
-        )
-        assert True
+            f"{'-' * 77}")
     else:
         pytest.fail(
             f"Received an unexpected status code ({response.status_code}) from\n"

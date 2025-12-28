@@ -47,6 +47,8 @@ jobs:
           pip install pytest requests toml
       - name: Test with pytest
         run: pytest -m "not network" # Run all tests EXCEPT the network one
+      - name: Run CLI tests
+        run: pytest tests/test_cli.py
 
   # Job 3: Check the version before the modification pyproject.toml
   check-version:

@@ -21,7 +21,6 @@ __pycache__/
 [Ll]ib
 [Ll]ib64
 [Ll]ocal
-[Ss]cripts
 pyvenv.cfg
 pip-selfcheck.json
 *.pot
@@ -113,7 +112,6 @@ ai_workflow.md
 GEMINI.md
 GOALS.md
 out-of-scope.md
-pyproject.toml
 rules.md
 scope.md
 task_list.txt
@@ -124,4 +122,5 @@ PUBLISHING_GUIDE.md
 /CHANGELOG.md
 WORKFLOW_GUIDE.md
 /.github/workflows/publish-to-testpypi.yml.backup.txt
-/scripts/
+.pytest_tmp
+/FUTURE_FEATURES.md

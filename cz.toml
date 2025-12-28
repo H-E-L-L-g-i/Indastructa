@@ -1,0 +1,10 @@
+# Commitizen configuration
+[tool.commitizen]
+# Use the conventional commits style
+name = "cz_conventional_commits"
+# Disable automatic version bumping
+version_type = "none"
+# Do not update the version in pyproject.toml
+update_changelog_on_bump = false
+# Skip the version file management
+version_provider = "pep621"
