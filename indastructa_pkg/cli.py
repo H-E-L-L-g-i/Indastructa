@@ -136,7 +136,8 @@ def write_structure_to_file(output_file: Path, content: str) -> None:
         output_file.write_text(content, encoding="utf-8")
         print(f"Project structure successfully saved to: {output_file}")
     except IOError as e:
-        print(f"Error writing to file {output_file}: {e}")
+        print(f"Error writing to file {output_file}: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main() -> None:
