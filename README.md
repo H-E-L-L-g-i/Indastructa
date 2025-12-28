@@ -1,5 +1,12 @@
 # Indastructa
 
+[![PyPI version](https://badge.fury.io/py/indastructa.svg)](https://badge.fury.io/py/indastructa)
+[![Python Versions](https://img.shields.io/pypi/pyversions/indastructa.svg)](https://pypi.org/project/indastructa/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/H-E-L-L-g-i/Indastructa/actions/workflows/ci.yml/badge.svg)](https://github.com/H-E-L-L-g-i/Indastructa/actions)
+[![codecov](https://codecov.io/gh/H-E-L-L-g-i/Indastructa/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/H-E-L-L-g-i/Indastructa)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
 **Indastructa** is a convenient CLI tool for quickly creating a clear ASCII tree of your project's file structure.
 
 Perfect for documentation, technical reviews, architecture discussions, or blog posts.
@@ -92,18 +99,81 @@ You can combine flags to customize the output.
     indastructa -o custom_structure.md
     ```
 
+*   **Suppress console output** with `-q` or `--quiet`:
+
+    ```bash
+    indastructa --quiet
+    ```
+
 *   **Perform a dry run** with `--dry-run` to see the output without saving the file:
 
     ```bash
     indastructa --dry-run
     ```
 
-### Full Example
+---
 
-Here is a complex example combining all options:
+## 📚 Examples
 
+### Example 1: Python Package
+
+**Command:**
 ```bash
-indastructa ./src --depth 3 --exclude "*.pyc" --include ".env" -o src_structure.txt
+indastructa --depth 3 --exclude "*.pyc,__pycache__,dist,build"
+```
+
+**Output:**
+```
+my_package/
+  |-- src/
+  |     |-- __init__.py
+  |     |-- main.py
+  |     +-- utils.py
+  |-- tests/
+  |     |-- test_main.py
+  |     +-- test_utils.py
+  |-- setup.py
+  |-- README.md
+  +-- requirements.txt
+```
+
+---
+
+### Example 2: Web Application
+
+**Command:**
+```bash
+indastructa --exclude "node_modules,dist,.next"
+```
+
+**Output:**
+```
+my_app/
+  |-- public/
+  |-- src/
+  |     |-- components/
+  |     |-- pages/
+  |     +-- styles/
+  |-- package.json
+  +-- README.md
+```
+
+---
+
+### Example 3: CI/CD Usage in GitHub Actions
+
+Add this to your workflow to automatically add the project structure to the job summary:
+
+```yaml
+- name: Generate and display project structure
+  run: |
+    pip install indastructa
+    indastructa --depth 3 -o structure.txt
+
+    echo "## 📂 Project Structure" >> $GITHUB_STEP_SUMMARY
+    echo '```' >> $GITHUB_STEP_SUMMARY
+    cat structure.txt >> $GITHUB_STEP_SUMMARY
+    echo '```' >> $GITHUB_STEP_SUMMARY
 ```
 
 ---
