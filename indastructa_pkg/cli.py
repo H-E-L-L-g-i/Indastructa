@@ -72,10 +72,10 @@ Tips:
 
 def _read_single_ignore_file(file_path: Path) -> Set[str]:
     """Reads patterns from a single ignore file, skipping comments and empty lines."""
-    if not file_path.is_file():
-        return set()
-
     try:
+        if not file_path.is_file():
+            return set()
+
         with file_path.open("r", encoding="utf-8") as f:
             return {
                 line.strip()
@@ -153,8 +153,8 @@ def format_dir_structure(
     )
 
     parts = []
-    all_items_except_the_last_one = sorted_items[:-1]
-    for item in all_items_except_the_last_one:
+    # Process all items except the last one
+    for item in sorted_items[:-1]:
         item_display_name = f"{item.name}{'/' if item.is_dir() else ''}"
         parts.append(f"{prefix}  |-- {item_display_name}")
         if item.is_dir():
@@ -169,6 +169,7 @@ def format_dir_structure(
                 )
             )
 
+    # Process the last item separately
     if sorted_items:
         last_item = sorted_items[-1]
         item_display_name = f"{last_item.name}{'/' if last_item.is_dir() else ''}"
