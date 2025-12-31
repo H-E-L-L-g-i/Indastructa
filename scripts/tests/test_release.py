@@ -213,7 +213,9 @@ def test_handle_bump_scenario_yes(
     mock_check, mock_input, mock_update, mock_print, monkeypatch
 ):
     """Test the bump scenario when user confirms."""
-    args = argparse.Namespace(part="patch", dev=False, dry_run=False, repo="testpypi")
+    args = argparse.Namespace(
+        part="patch", dev=False, dry_run=False, repo="testpypi", yes=False
+    )
     r.handle_bump_scenario(args, "my-package", "1.0.0")
 
     mock_check.assert_called_once_with("my-package", "1.0.1", "testpypi")
@@ -230,7 +232,9 @@ def test_handle_bump_scenario_no(
     mock_check, mock_input, mock_update, mock_print, monkeypatch
 ):
     """Test the bump scenario when user aborts."""
-    args = argparse.Namespace(part="patch", dev=False, dry_run=False, repo="testpypi")
+    args = argparse.Namespace(
+        part="patch", dev=False, dry_run=False, repo="testpypi", yes=False
+    )
     r.handle_bump_scenario(args, "my-package", "1.0.0")
 
     mock_check.assert_called_once()
@@ -247,7 +251,9 @@ def test_handle_bump_scenario_dry_run(
     mock_check, mock_input, mock_update, mock_print, monkeypatch
 ):
     """Test the bump scenario with --dry-run."""
-    args = argparse.Namespace(part="patch", dev=False, dry_run=True, repo="testpypi")
+    args = argparse.Namespace(
+        part="patch", dev=False, dry_run=True, repo="testpypi", yes=False
+    )
     r.handle_bump_scenario(args, "my-package", "1.0.0")
 
     mock_check.assert_called_once()
@@ -257,11 +263,30 @@ def test_handle_bump_scenario_dry_run(
 
 
 @patch("release.print_release_instructions")
+@patch("release.update_pyproject_toml")
+@patch("builtins.input")
+@patch("release.check_version_availability")
+def test_handle_bump_scenario_with_yes_flag(
+    mock_check, mock_input, mock_update, mock_print
+):
+    """Test that --yes flag skips input and updates."""
+    args = argparse.Namespace(
+        part="patch", dev=False, dry_run=False, repo="testpypi", yes=True
+    )
+    r.handle_bump_scenario(args, "my-package", "1.0.0")
+
+    mock_check.assert_called_once()
+    mock_input.assert_not_called()
+    mock_update.assert_called_once_with("1.0.1")
+    mock_print.assert_called_once_with("1.0.1")
+
+
+@patch("release.print_release_instructions")
 @patch("builtins.input", return_value="y")
 @patch("release.check_version_availability")
 def test_handle_check_scenario_yes(mock_check, mock_input, mock_print):
     """Test the check scenario when user confirms."""
-    args = argparse.Namespace(dry_run=False, repo="testpypi")
+    args = argparse.Namespace(dry_run=False, repo="testpypi", yes=False)
     r.handle_check_scenario(args, "my-package", "1.0.0")
 
     mock_check.assert_called_once_with("my-package", "1.0.0", "testpypi")
@@ -274,7 +299,7 @@ def test_handle_check_scenario_yes(mock_check, mock_input, mock_print):
 @patch("release.check_version_availability")
 def test_handle_check_scenario_no(mock_check, mock_input, mock_print):
     """Test the check scenario when user aborts."""
-    args = argparse.Namespace(dry_run=False, repo="testpypi")
+    args = argparse.Namespace(dry_run=False, repo="testpypi", yes=False)
     r.handle_check_scenario(args, "my-package", "1.0.0")
 
     mock_check.assert_called_once()
@@ -287,12 +312,79 @@ def test_handle_check_scenario_no(mock_check, mock_input, mock_print):
 @patch("release.check_version_availability")
 def test_handle_check_scenario_dry_run(mock_check, mock_input, mock_print):
     """Test the check scenario with --dry-run."""
-    args = argparse.Namespace(dry_run=True, repo="testpypi")
+    args = argparse.Namespace(dry_run=True, repo="testpypi", yes=False)
     r.handle_check_scenario(args, "my-package", "1.0.0")
 
     mock_check.assert_called_once()
     mock_input.assert_not_called()
     mock_print.assert_not_called()
+
+
+@patch("release.print_release_instructions")
+@patch("builtins.input")
+@patch("release.check_version_availability")
+def test_handle_check_scenario_with_yes_flag(mock_check, mock_input, mock_print):
+    """Test that --yes flag skips input in check scenario."""
+    args = argparse.Namespace(dry_run=False, repo="testpypi", yes=True)
+    r.handle_check_scenario(args, "my-package", "1.0.0")
+
+    mock_check.assert_called_once()
+    mock_input.assert_not_called()
+    mock_print.assert_called_once_with("1.0.0")
+
+
+# ============================================================================
+# GIT STATUS TESTS
+# ============================================================================
+
+
+@patch("release.subprocess.run")
+def test_main_with_dirty_git_status_exits(mock_run):
+    """Test that main exits if git status is not clean."""
+    mock_run.side_effect = [
+        MagicMock(),  # git rev-parse --is-inside-work-tree
+        MagicMock(stdout=" M some_file.py"),  # git status --porcelain
+        MagicMock(),  # git status --short
+    ]
+
+    with pytest.raises(SystemExit) as e:
+        with patch.object(sys, "argv", ["release.py"]):
+            r.main()
+    assert e.value.code == 1
+
+
+@patch("release.subprocess.run")
+def test_main_with_clean_git_status_continues(mock_run, mock_pyproject_path):
+    """Test that main continues if git status is clean."""
+    mock_run.side_effect = [
+        MagicMock(),  # git rev-parse
+        MagicMock(stdout=""),  # git status
+        MagicMock(stdout="main"),  # get_current_branch
+        MagicMock(status_code=404),  # requests.get
+    ]
+    mock_pyproject_path.write_text("[project]\nname = 'my-package'\nversion = '1.0.0'")
+
+    with (
+        patch.object(sys, "argv", ["release.py", "patch"]),
+        patch("builtins.input", return_value="n"),
+    ):
+        r.main()
+
+
+@patch("release.subprocess.run")
+def test_main_with_skip_git_check_continues(mock_run, mock_pyproject_path):
+    """Test that --skip-git-check bypasses the dirty status check."""
+    mock_run.side_effect = [
+        MagicMock(stdout="main"),  # get_current_branch
+        MagicMock(status_code=404),  # requests.get
+    ]
+    mock_pyproject_path.write_text("[project]\nname = 'my-package'\nversion = '1.0.0'")
+
+    with (
+        patch.object(sys, "argv", ["release.py", "--skip-git-check"]),
+        patch("builtins.input", return_value="n"),
+    ):
+        r.main()
 
 
 # ============================================================================
@@ -301,19 +393,24 @@ def test_handle_check_scenario_dry_run(mock_check, mock_input, mock_print):
 
 
 class TestMainIntegration:
+    @patch("release.subprocess.run")
     @patch("release.requests.get")
     @patch("builtins.input", return_value="y")
     def test_main_scenario_patch_bump(
-        self, mock_input, mock_get, mock_pyproject_path, monkeypatch
+        self, mock_input, mock_get, mock_run, mock_pyproject_path, monkeypatch
     ):
         """
         Integration test for a full 'patch' bump scenario.
-        `python release.py patch`
         """
         mock_pyproject_path.write_text(
             "[project]\nname = 'my-package'\nversion = '1.0.0'"
         )
         mock_get.return_value.status_code = 404
+        mock_run.side_effect = [
+            MagicMock(),  # git rev-parse
+            MagicMock(stdout=""),  # git status
+            MagicMock(stdout="main"),  # get_current_branch
+        ]
         monkeypatch.setattr(sys, "argv", ["release.py", "patch"])
 
         r.main()
@@ -321,19 +418,24 @@ class TestMainIntegration:
         updated_config = toml.load(mock_pyproject_path)
         assert updated_config["project"]["version"] == "1.0.1"
 
+    @patch("release.subprocess.run")
     @patch("release.requests.get")
     @patch("builtins.input", return_value="y")
     def test_main_scenario_dev_only_bump(
-        self, mock_input, mock_get, mock_pyproject_path, monkeypatch
+        self, mock_input, mock_get, mock_run, mock_pyproject_path, monkeypatch
     ):
         """
         Integration test for a dev-only bump.
-        `python release.py --dev`
         """
         mock_pyproject_path.write_text(
             "[project]\nname = 'my-package'\nversion = '1.0.0'"
         )
         mock_get.return_value.status_code = 404
+        mock_run.side_effect = [
+            MagicMock(),  # git rev-parse
+            MagicMock(stdout=""),  # git status
+            MagicMock(stdout="dev"),  # get_current_branch
+        ]
         monkeypatch.setattr(sys, "argv", ["release.py", "--dev"])
 
         r.main()
@@ -341,10 +443,11 @@ class TestMainIntegration:
         updated_config = toml.load(mock_pyproject_path)
         assert updated_config["project"]["version"] == "1.0.0.dev1"
 
+    @patch("release.subprocess.run")
     @patch("release.requests.get")
     @patch("builtins.input", return_value="n")
     def test_main_scenario_user_aborts(
-        self, mock_input, mock_get, mock_pyproject_path, monkeypatch, capsys
+        self, mock_input, mock_get, mock_run, mock_pyproject_path, monkeypatch, capsys
     ):
         """
         Integration test for user aborting the process.
@@ -353,6 +456,11 @@ class TestMainIntegration:
             "[project]\nname = 'my-package'\nversion = '1.0.0'"
         )
         mock_get.return_value.status_code = 404
+        mock_run.side_effect = [
+            MagicMock(),  # git rev-parse
+            MagicMock(stdout=""),  # git status
+            MagicMock(stdout="main"),  # get_current_branch
+        ]
         monkeypatch.setattr(sys, "argv", ["release.py", "patch"])
 
         r.main()

@@ -1,7 +1,6 @@
 import argparse
 import fnmatch
 from pathlib import Path
-import textwrap
 from typing import Set, List
 import sys
 
@@ -37,27 +36,67 @@ EXCLUDE_SET: Set[str] = {
 }
 
 
+def get_cli_examples() -> str:
+    """Returns formatted CLI usage examples with dynamic values."""
+    return f"""
+Examples:
+  Basic usage:
+    indastructa                      # Scan current directory
+    indastructa ./src                # Scan specific directory
+
+  Output control:
+    indastructa -o structure.txt     # Custom output (default: {OUTPUT_FILENAME.name})
+    indastructa --quiet              # Suppress console output
+    indastructa --dry-run            # Preview only, no file created
+
+  Filtering:
+    indastructa --depth 2            # Limit scan depth (default: unlimited)
+    indastructa --exclude "*.pyc"    # Exclude single pattern
+    indastructa --exclude "*.log,node_modules"
+                                     # Exclude multiple patterns
+    indastructa --include ".env"     # Force include single pattern
+    indastructa --include ".env,.secrets,*.log"
+                                     # Force include multiple patterns
+
+  Combined:
+    indastructa ./src --depth 3 --exclude "*.pyc" --include ".env" -q -o out.txt
+
+Tips:
+   • Use quotes around patterns with wildcards: "*.log"
+   • Separate multiple patterns with commas: "*.pyc,*.pyo"
+   • A file matching --include will be shown even if it also matches --exclude.
+   • Default output: {OUTPUT_FILENAME.name}
+   • Default depth: unlimited (-1)
+"""
+
+
+def _read_single_ignore_file(file_path: Path) -> Set[str]:
+    """Reads patterns from a single ignore file, skipping comments and empty lines."""
+    try:
+        if not file_path.is_file():
+            return set()
+
+        with file_path.open("r", encoding="utf-8") as f:
+            return {
+                line.strip()
+                for line in f
+                if line.strip() and not line.strip().startswith("#")
+            }
+    except (IOError, PermissionError):
+        return set()
+
+
 def get_patterns_from_ignore_files(
     directory: Path, ignore_filenames: List[str]
 ) -> Set[str]:
     """
-    Reads multiple ignore files (e.g., .gitignore, .dockerignore) from a directory
-    and returns a combined set of unique patterns.
+    Reads multiple ignore files from a directory and returns a combined set of patterns.
     """
     all_patterns: Set[str] = set()
     for filename in ignore_filenames:
         ignore_file_path = directory / filename
-        try:
-            if ignore_file_path.is_file():
-                with ignore_file_path.open("r", encoding="utf-8") as f:
-                    patterns = {
-                        line.strip()
-                        for line in f
-                        if line.strip() and not line.strip().startswith("#")
-                    }
-                    all_patterns.update(patterns)
-        except (IOError, PermissionError):
-            continue
+        patterns = _read_single_ignore_file(ignore_file_path)
+        all_patterns.update(patterns)
     return all_patterns
 
 
@@ -68,17 +107,31 @@ def is_excluded(
     Checks if a given path should be excluded based on include and exclude patterns.
     Include patterns have higher priority.
     """
-    # If the path matches an include pattern, it should NOT be excluded.
     for pattern in include_patterns:
         if fnmatch.fnmatch(path.name, pattern):
             return False
 
-    # If not included, check if it matches an exclude pattern.
     for pattern in exclude_patterns:
         if fnmatch.fnmatch(path.name, pattern):
             return True
 
     return False
+
+
+def _get_sorted_directory_items(
+    root_path: Path, exclude_patterns: Set[str], include_patterns: Set[str]
+) -> List[Path]:
+    """Gets, filters, and sorts items in a directory."""
+    try:
+        all_path_items = root_path.iterdir()
+        filtered_items = [
+            path
+            for path in all_path_items
+            if not is_excluded(path, exclude_patterns, include_patterns)
+        ]
+        return sorted(filtered_items, key=lambda p: (p.is_file(), p.name.lower()))
+    except (FileNotFoundError, PermissionError):
+        return []
 
 
 def format_dir_structure(
@@ -95,38 +148,44 @@ def format_dir_structure(
     if max_depth != -1 and current_depth >= max_depth:
         return ""
 
-    try:
-        all_path_items = root_path.iterdir()
-        filtered_items = [
-            path
-            for path in all_path_items
-            if not is_excluded(path, exclude_patterns, include_patterns)
-        ]
-        sorted_items = sorted(
-            filtered_items, key=lambda p: (p.is_file(), p.name.lower())
-        )
-    except (FileNotFoundError, PermissionError):
-        return ""
+    sorted_items = _get_sorted_directory_items(
+        root_path, exclude_patterns, include_patterns
+    )
 
     parts = []
-    for i, item in enumerate(sorted_items):
-        is_last = i == len(sorted_items) - 1
-        connector = "  +-- " if is_last else "  |-- "
+    # Process all items except the last one
+    for item in sorted_items[:-1]:
         item_display_name = f"{item.name}{'/' if item.is_dir() else ''}"
-        parts.append(f"{prefix}{connector}{item_display_name}")
-
+        parts.append(f"{prefix}  |-- {item_display_name}")
         if item.is_dir():
-            new_prefix = prefix + ("      " if is_last else "  |   ")
             parts.append(
                 format_dir_structure(
                     item,
                     exclude_patterns,
                     include_patterns,
-                    new_prefix,
+                    prefix + "  |   ",
                     max_depth,
                     current_depth + 1,
                 )
             )
+
+    # Process the last item separately
+    if sorted_items:
+        last_item = sorted_items[-1]
+        item_display_name = f"{last_item.name}{'/' if last_item.is_dir() else ''}"
+        parts.append(f"{prefix}  +-- {item_display_name}")
+        if last_item.is_dir():
+            parts.append(
+                format_dir_structure(
+                    last_item,
+                    exclude_patterns,
+                    include_patterns,
+                    prefix + "      ",
+                    max_depth,
+                    current_depth + 1,
+                )
+            )
+
     return "\n".join(parts)
 
 
@@ -134,41 +193,18 @@ def write_structure_to_file(output_file: Path, content: str) -> None:
     """Writes the directory structure to a file."""
     try:
         output_file.write_text(content, encoding="utf-8")
-        print(f"Project structure successfully saved to: {output_file}")
     except IOError as e:
         print(f"Error writing to file {output_file}: {e}", file=sys.stderr)
         sys.exit(1)
 
 
-def main() -> None:
-    """The main entry point for the script."""
+def parse_cli_args() -> argparse.Namespace:
+    """Parses command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Generate ASCII tree representation of a project structure.",
         add_help=True,
         formatter_class=argparse.RawTextHelpFormatter,
-        epilog=textwrap.dedent("""
-            Examples:
-              # 1. Scan the current directory
-              indastructa
-
-              # 2. Scan a specific directory
-              indastructa ./src
-
-              # 3. Scan with a depth limit and save to a different file
-              indastructa --depth 2 -o custom_name.txt
-
-              # 4. Exclude multiple patterns (use quotes for safety)
-              indastructa --exclude "*.log,node_modules"
-
-              # 5. Force include a file that is normally excluded (e.g., by .gitignore)
-              indastructa --include .env
-
-              # 6. Perform a dry run without writing to a file
-              indastructa --dry-run
-
-              # 7. A complex example
-              indastructa ./src --depth 3 --exclude "*.pyc" --include ".env" -o structure.md
-        """),
+        epilog=get_cli_examples(),
     )
     parser.add_argument(
         "path",
@@ -202,8 +238,18 @@ def main() -> None:
         action="store_true",
         help="Perform a trial run without writing the output file.",
     )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Suppress all console output except for errors.",
+    )
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+def main() -> None:
+    """The main entry point for the script."""
+    args = parse_cli_args()
 
     if args.path is None:
         project_dir = Path.cwd()
@@ -254,15 +300,20 @@ def main() -> None:
 
     output_content = f"{project_dir.name}/\n{structure_text}\n"
 
-    if args.dry_run:
-        print("-- DRY RUN MODE --")
-        print("The following structure would be generated, but not saved to a file:")
-    else:
+    if not args.dry_run:
         output_filename = project_dir / args.output
         write_structure_to_file(output_filename, output_content)
+        if not args.quiet:
+            print(f"Project structure successfully saved to: {output_filename}")
 
-    print("\n--- Project Structure ---")
-    print(output_content)
+    if not args.quiet:
+        if args.dry_run:
+            print("-- DRY RUN MODE --")
+            print(
+                "The following structure would be generated, but not saved to a file:"
+            )
+        print("\n--- Project Structure ---")
+        print(output_content)
 
 
 if __name__ == "__main__":

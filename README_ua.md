@@ -1,5 +1,12 @@
 # Indastructa
 
+[![PyPI version](https://badge.fury.io/py/indastructa.svg)](https://badge.fury.io/py/indastructa)
+[![Python Versions](https://img.shields.io/pypi/pyversions/indastructa.svg)](https://pypi.org/project/indastructa/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/H-E-L-L-g-i/Indastructa/actions/workflows/ci.yml/badge.svg)](https://github.com/H-E-L-L-g-i/Indastructa/actions)
+[![codecov](https://codecov.io/gh/H-E-L-L-g-i/Indastructa/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/H-E-L-L-g-i/Indastructa/tree/main)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+
 **Indastructa** — це зручний CLI-інструмент для швидкого створення наочного ASCII-дерева файлової структури вашого проєкту.
 
 Ідеально підходить для документації, технічних рев'ю, обговорення архітектури або публікацій у блогах.
@@ -92,18 +99,81 @@ indastructa C:\Users\YourUser\Projects\MyProject
     indastructa -o custom_structure.md
     ```
 
+*   **Приховати вивід у консоль** за допомогою `-q` або `--quiet`:
+
+    ```bash
+    indastructa --quiet
+    ```
+
 *   **Виконати "сухий запуск"** за допомогою `--dry-run`, щоб побачити результат без збереження у файл:
 
     ```bash
     indastructa --dry-run
     ```
 
-### Повний приклад
+---
 
-Ось складний приклад, що поєднує всі опції:
+## 📚 Приклади
 
+### Приклад 1: Python-пакет
+
+**Команда:**
 ```bash
-indastructa ./src --depth 3 --exclude "*.pyc" --include ".env" -o src_structure.txt
+indastructa --depth 3 --exclude "*.pyc,__pycache__,dist,build"
+```
+
+**Результат:**
+```
+my_package/
+  |-- src/
+  |     |-- __init__.py
+  |     |-- main.py
+  |     +-- utils.py
+  |-- tests/
+  |     |-- test_main.py
+  |     +-- test_utils.py
+  |-- setup.py
+  |-- README.md
+  +-- requirements.txt
+```
+
+---
+
+### Приклад 2: Веб-застосунок
+
+**Команда:**
+```bash
+indastructa --exclude "node_modules,dist,.next"
+```
+
+**Результат:**
+```
+my_app/
+  |-- public/
+  |-- src/
+  |     |-- components/
+  |     |-- pages/
+  |     +-- styles/
+  |-- package.json
+  +-- README.md
+```
+
+---
+
+### Приклад 3: Використання в CI/CD (GitHub Actions)
+
+Додайте цей крок у ваш workflow, щоб автоматично додавати структуру проєкту до звіту про виконання:
+
+```yaml
+- name: Generate and display project structure
+  run: |
+    pip install indastructa
+    indastructa --depth 3 -o structure.txt
+
+    echo "## 📂 Project Structure" >> $GITHUB_STEP_SUMMARY
+    echo '```' >> $GITHUB_STEP_SUMMARY
+    cat structure.txt >> $GITHUB_STEP_SUMMARY
+    echo '```' >> $GITHUB_STEP_SUMMARY
 ```
 
 ---

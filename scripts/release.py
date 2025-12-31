@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 import textwrap
 import re
+import subprocess
 from typing import Optional
 
 import requests
@@ -115,7 +116,8 @@ def update_pyproject_toml(new_version: str):
 
 def print_release_instructions(version: str):
     """Prints the final git commands for the user to run."""
-    instructions = f"""\n{"=" * 60}
+    instructions = f"""
+============================================================
 NEXT STEPS: Manually create the release commit and tag.
 Run the following commands:
 
@@ -123,9 +125,40 @@ Run the following commands:
     git commit -m "chore: Prepare release v{version}"
     git tag v{version}
 
-    git push && git push origin v{version}{"=" * 60}
+    git push && git push origin v{version}
+============================================================
 """
     print(instructions)
+
+
+def check_git_status() -> bool:
+    """Checks if the git working tree is clean."""
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            check=True,
+            capture_output=True,
+        )
+        result = subprocess.run(
+            ["git", "status", "--porcelain"], capture_output=True, text=True
+        )
+        return len(result.stdout.strip()) == 0
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return True  # Not a git repo or git not found, skip check
+
+
+def get_current_branch() -> str:
+    """Returns the name of the current git branch."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "unknown"
 
 
 def parse_cli_args(script_name: str):
@@ -137,8 +170,8 @@ def parse_cli_args(script_name: str):
               # 1. Check the current version against TestPyPI
               python scripts/{script_name}
 
-              # 2. Bump the patch version and check against the official PyPI
-              python scripts/{script_name} patch --repo pypi
+              # 2. Bump the patch version and auto-confirm
+              python scripts/{script_name} patch --yes
 
               # 3. Bump minor and start a dev version
               python scripts/{script_name} minor --dev
@@ -169,6 +202,17 @@ def parse_cli_args(script_name: str):
         "--dry-run",
         action="store_true",
         help="Perform a trial run without changing any files.",
+    )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip confirmation prompts (useful for automation).",
+    )
+    parser.add_argument(
+        "--skip-git-check",
+        action="store_true",
+        help="Skip git working tree check (not recommended).",
     )
     return parser.parse_args()
 
@@ -208,12 +252,14 @@ def handle_bump_scenario(args, package_name, current_version):
         print("-- END DRY RUN --")
         return
 
-    confirm = input(f"Update pyproject.toml to version {new_version}? (y/n): ")
-    if confirm.lower() == "y":
-        update_pyproject_toml(new_version)
-        print_release_instructions(new_version)
-    else:
-        print("Aborted by user.")
+    if not args.yes:
+        confirm = input(f"Update pyproject.toml to version {new_version}? (y/N): ")
+        if confirm.lower() not in ["y", "yes"]:
+            print("Aborted by user.")
+            return
+
+    update_pyproject_toml(new_version)
+    print_release_instructions(new_version)
 
 
 def handle_check_scenario(args, package_name, current_version):
@@ -226,19 +272,37 @@ def handle_check_scenario(args, package_name, current_version):
         print("-- END DRY RUN --")
         return
 
-    confirm = input(
-        f"\nDo you want to prepare a release for this version ('{current_version}')? (y/n): "
-    )
-    if confirm.lower() == "y":
-        print_release_instructions(current_version)
-    else:
-        print("Aborted by user.")
+    if not args.yes:
+        confirm = input(
+            f"\nDo you want to prepare a release for this version ('{current_version}')? (y/N): "
+        )
+        if confirm.lower() not in ["y", "yes"]:
+            print("Aborted by  user.")
+            return
+
+    print_release_instructions(current_version)
 
 
 def main():
     """Main script logic."""
     script_name = Path(__file__).name
     args = parse_cli_args(script_name)
+
+    if not args.skip_git_check and not check_git_status():
+        print("\n❌ Error: You have uncommitted changes in your working directory.")
+        print("Please commit or stash your changes before running this script.\n")
+        subprocess.run(["git", "status", "--short"])
+        sys.exit(1)
+
+    current_branch = get_current_branch()
+    if current_branch not in ["dev", "main", "master"]:
+        print(f"⚠️  Warning: You're on branch '{current_branch}' (not dev/main)")
+        if not args.yes:
+            confirm = input("Continue anyway? (y/N): ")
+            if confirm.lower() not in ["y", "yes"]:
+                print("Aborted  by user.")
+                sys.exit(0)
+
     package_name, current_version = get_project_info()
     print(f"Package: {package_name}")
     print(f"Current version in 'pyproject.toml' file: {current_version}")

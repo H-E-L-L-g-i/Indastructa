@@ -8,7 +8,15 @@ version = "0.1.0"
 description = "A CLI tool to generate ASCII tree representation of a project structure."
 readme = "README.md"
 requires-python = ">=3.10"
-classifiers = [ "Programming Language :: Python :: 3", "License :: OSI Approved :: MIT License", "Operating System :: OS Independent", "Topic :: Utilities",]
+license = { text = "MIT License" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Utilities",
+]
 [[project.authors]]
 name = "H-E-L-L-gi"
 email = "oleg.cegak@gmail.com"
