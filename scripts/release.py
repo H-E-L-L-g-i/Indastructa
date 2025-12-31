@@ -11,11 +11,7 @@ import toml
 
 # --- Configuration ---
 PYPROJECT_PATH = Path(__file__).parent.parent / "pyproject.toml"
-DEFAULT_PYPI_REPO = "testpypi"
-PYPI_URLS = {
-    "pypi": "https://pypi.org/pypi/{package_name}/{version}/json",
-    "testpypi": "https://test.pypi.org/pypi/{package_name}/{version}/json",
-}
+CHANGELOG_PATH = Path(__file__).parent.parent / "CHANGELOG.md"
 VERSION_REGEX_PATTERN = r"^(\d+)\.(\d+)\.(\d+)(?:\.dev(\d+))?$"
 
 
@@ -30,77 +26,33 @@ def get_project_info() -> tuple[str, str]:
     if not name or not version:
         print(
             "Error: 'name' or 'version' not found in [project] section "
-            " of 'pyproject.toml' file"
-        )
+            " of 'pyproject.toml' file")
         sys.exit(1)
     return name, version
 
 
-def validate_version_string(version: str) -> bool:
-    """
-    Validates a version string against a standard format.
-    """
-    return re.match(VERSION_REGEX_PATTERN, version) is not None
-
-
-def parse_version(version: str) -> tuple[int, int, int, Optional[int]]:
-    """Parses a version string into its components."""
-    match = re.match(VERSION_REGEX_PATTERN, version)
-    if not match:
-        raise ValueError(f"Invalid version format: {version}")
-    major, minor, patch = map(int, match.groups()[:3])
-    dev_number = int(match.group(4)) if match.group(4) else None
-    return major, minor, patch, dev_number
-
-
-def check_if_version_exists(package_name: str, version: str, repo: str) -> bool:
-    """
-    Checks if a version of the package already exists on the specified repository.
-    """
-    if not validate_version_string(version):
-        raise ValueError(
-            f"Incorrect version format: '{version}'. Must be 'X.Y.Z' or 'X.Y.Z.devN'"
-        )
-
-    url = PYPI_URLS[repo].format(package_name=package_name, version=version)
-    print(f"Checking for version {version} on {repo.upper()}...")
-    try:
-        response = requests.get(url, timeout=10)
-        return response.status_code == 200
-    except requests.RequestException as e:
-        print(f"Warning: Could not check version on {repo.upper()}: {e}")
-        return False
-
-
-def bump_version(
-    current_version: str, part: Optional[str] = None, bump_dev: bool = False
-) -> str:
+def bump_version_string(current_version: str, part: str) -> str:
     """Bumps the version string based on the specified part."""
-    major, minor, patch, dev_number = parse_version(current_version)
+    match = re.match(VERSION_REGEX_PATTERN, current_version)
+    if not match:
+        print(f"Error: Invalid version format: {current_version}")
+        sys.exit(1)
+        
+    major, minor, patch = map(int, match.groups()[:3])
 
-    match part:
-        case "major":
-            major += 1
-            minor = patch = 0
-        case "minor":
-            minor += 1
-            patch = 0
-        case "patch":
-            patch += 1
-        case None:
-            if bump_dev:
-                dev_number = 1 if dev_number is None else dev_number + 1
-                return f"{major}.{minor}.{patch}.dev{dev_number}"
-            else:
-                raise ValueError(
-                    "You must specify a version part ('major', 'minor', 'patch') "
-                    "or use --dev to bump a dev version."
-                )
-        case _:
-            raise ValueError(f"Unknown version part: {part}")
-
-    if bump_dev:
-        return f"{major}.{minor}.{patch}.dev1"
+    if part == "major":
+        major += 1
+        minor = 0
+        patch = 0
+    elif part == "minor":
+        minor += 1
+        patch = 0
+    elif part == "patch":
+        patch += 1
+    else:
+        print(f"Error: Unknown version part: {part}")
+        sys.exit(1)
+        
     return f"{major}.{minor}.{patch}"
 
 
@@ -114,206 +66,64 @@ def update_pyproject_toml(new_version: str):
     print("pyproject.toml updated successfully.")
 
 
-def print_release_instructions(version: str):
-    """Prints the final git commands for the user to run."""
-    instructions = f"""
-============================================================
-NEXT STEPS: Manually create the release commit and tag.
-Run the following commands:
-
-    git add pyproject.toml
-    git commit -m "chore: Prepare release v{version}"
-    git tag v{version}
-
-    git push && git push origin v{version}
-============================================================
-"""
-    print(instructions)
-
-
-def check_git_status() -> bool:
-    """Checks if the git working tree is clean."""
+def run_command(command: list, error_msg: str):
+    """Runs a command and exits on error."""
     try:
-        subprocess.run(
-            ["git", "rev-parse", "--is-inside-work-tree"],
-            check=True,
-            capture_output=True,
-        )
-        result = subprocess.run(
-            ["git", "status", "--porcelain"], capture_output=True, text=True
-        )
-        return len(result.stdout.strip()) == 0
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return True  # Not a git repo or git not found, skip check
-
-
-def get_current_branch() -> str:
-    """Returns the name of the current git branch."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip()
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return "unknown"
-
-
-def parse_cli_args(script_name: str):
-    """Parses command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="A script to check and bump the project version for a release.",
-        epilog=textwrap.dedent(f"""
-            Examples:
-              # 1. Check the current version against TestPyPI
-              python scripts/{script_name}
-
-              # 2. Bump the patch version and auto-confirm
-              python scripts/{script_name} patch --yes
-
-              # 3. Bump minor and start a dev version
-              python scripts/{script_name} minor --dev
-
-              # 4. Perform a dry run to see the new version without changing any files
-              python scripts/{script_name} patch --dry-run
-        """),
-        formatter_class=argparse.RawTextHelpFormatter,
-    )
-    parser.add_argument(
-        "part",
-        nargs="?",
-        choices=["major", "minor", "patch"],
-        help="Optional. The part of the version to increment.",
-    )
-    parser.add_argument(
-        "--repo",
-        choices=["pypi", "testpypi"],
-        default=DEFAULT_PYPI_REPO,
-        help=f"The repository to check the version against. Defaults to '{DEFAULT_PYPI_REPO}'.",
-    )
-    parser.add_argument(
-        "--dev",
-        action="store_true",
-        help="If the current version is a dev version, increment the dev number.",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Perform a trial run without changing any files.",
-    )
-    parser.add_argument(
-        "-y",
-        "--yes",
-        action="store_true",
-        help="Skip confirmation prompts (useful for automation).",
-    )
-    parser.add_argument(
-        "--skip-git-check",
-        action="store_true",
-        help="Skip git working tree check (not recommended).",
-    )
-    return parser.parse_args()
-
-
-def determine_new_version(
-    current_version: str, part: Optional[str], bump_dev: bool
-) -> str:
-    """Decides what the new version should be based on CLI arguments."""
-    if not part and bump_dev:
-        return bump_version(current_version, part=None, bump_dev=True)
-    return bump_version(current_version, part=part, bump_dev=bump_dev)
-
-
-def check_version_availability(package_name: str, version: str, repo: str):
-    """Checks if the version exists on the repo and exits if it does."""
-    try:
-        if check_if_version_exists(package_name, version, repo):
-            print(
-                f"Error: Version {version} already exists on {repo.upper()}. Please check manually."
-            )
-            sys.exit(1)
-    except ValueError as e:
-        print(f"Error: {e}")
+        subprocess.run(command, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {error_msg}")
+        print(f"Stderr: {e.stderr}")
         sys.exit(1)
-
-
-def handle_bump_scenario(args, package_name, current_version):
-    """Handles the logic for bumping a version."""
-    new_version = determine_new_version(current_version, args.part, args.dev)
-    print(f"New version would be: {new_version}")
-
-    check_version_availability(package_name, new_version, args.repo)
-    print(f"Version {new_version} is available on {args.repo.upper()}.")
-
-    if args.dry_run:
-        print("Would prompt to update pyproject.toml.")
-        print("-- END DRY RUN --")
-        return
-
-    if not args.yes:
-        confirm = input(f"Update pyproject.toml to version {new_version}? (y/N): ")
-        if confirm.lower() not in ["y", "yes"]:
-            print("Aborted by user.")
-            return
-
-    update_pyproject_toml(new_version)
-    print_release_instructions(new_version)
-
-
-def handle_check_scenario(args, package_name, current_version):
-    """Handles the logic for checking the current version."""
-    check_version_availability(package_name, current_version, args.repo)
-    print(f"Version {current_version} is available on {args.repo.upper()}.")
-
-    if args.dry_run:
-        print("Would prompt to prepare a release for this version.")
-        print("-- END DRY RUN --")
-        return
-
-    if not args.yes:
-        confirm = input(
-            f"\nDo you want to prepare a release for this version ('{current_version}')? (y/N): "
-        )
-        if confirm.lower() not in ["y", "yes"]:
-            print("Aborted by  user.")
-            return
-
-    print_release_instructions(current_version)
 
 
 def main():
     """Main script logic."""
-    script_name = Path(__file__).name
-    args = parse_cli_args(script_name)
+    parser = argparse.ArgumentParser(description="Prepares a new release by updating version, creating a commit and a tag.")
+    parser.add_argument("part", choices=["major", "minor", "patch"], help="The part of the version to increment.")
+    parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompts.")
+    args = parser.parse_args()
 
-    if not args.skip_git_check and not check_git_status():
-        print("\n❌ Error: You have uncommitted changes in your working directory.")
-        print("Please commit or stash your changes before running this script.\n")
-        subprocess.run(["git", "status", "--short"])
+    # --- Pre-flight checks ---
+    print("Performing pre-flight checks...")
+    if subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout:
+        print("Error: Your working directory is not clean. Please commit or stash your changes.")
         sys.exit(1)
 
-    current_branch = get_current_branch()
-    if current_branch not in ["dev", "main", "master"]:
-        print(f"⚠️  Warning: You're on branch '{current_branch}' (not dev/main)")
-        if not args.yes:
-            confirm = input("Continue anyway? (y/N): ")
-            if confirm.lower() not in ["y", "yes"]:
-                print("Aborted  by user.")
-                sys.exit(0)
+    current_branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True).stdout.strip()
+    if current_branch != "main" and not args.yes and input(f"Warning: You are on branch '{current_branch}', not 'main'. Continue anyway? (y/N): ").lower() != 'y':
+        print("Aborted.")
+        sys.exit(0)
 
-    package_name, current_version = get_project_info()
-    print(f"Package: {package_name}")
-    print(f"Current version in 'pyproject.toml' file: {current_version}")
+    # --- Planning ---
+    current_version = get_project_info()[1]
+    new_version = bump_version_string(current_version, args.part)
+    tag_name = f"v{new_version}"
 
-    if args.dry_run:
-        print("\n-- DRY RUN MODE --")
+    print("\nRelease Plan:")
+    print(f"  - Current version: {current_version}")
+    print(f"  - New version:     {new_version}")
+    print(f"  - Tag to create:   {tag_name}")
 
-    if args.part or args.dev:
-        handle_bump_scenario(args, package_name, current_version)
-    else:
-        handle_check_scenario(args, package_name, current_version)
+    if not args.yes and input("\nProceed with these actions? (y/N): ").lower() != 'y':
+        print("Aborted.")
+        sys.exit(0)
+
+    # --- Execution ---
+    print("\nExecuting release...")
+    update_pyproject_toml(new_version)
+    
+    print("Creating release commit and tag...")
+    run_command(["git", "add", str(PYPROJECT_PATH)], "Failed to stage pyproject.toml")
+    # You might want to add CHANGELOG.md here as well if you update it
+    # run_command(["git", "add", str(CHANGELOG_PATH)], "Failed to stage CHANGELOG.md")
+
+    commit_message = f"chore: Release {tag_name}"
+    run_command(["git", "commit", "-m", commit_message], "Failed to create commit")
+    run_command(["git", "tag", tag_name], f"Failed to create tag {tag_name}")
+
+    print("\nDone.")
+    print("NEXT STEP: Push the commit and tag to trigger the release workflow:")
+    print("\n    git push && git push --tags\n")
 
 
 if __name__ == "__main__":

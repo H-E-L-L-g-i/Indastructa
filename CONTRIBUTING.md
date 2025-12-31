@@ -1,8 +1,8 @@
 # Contributing to Indastructa
 
-Thank you for your interest in contributing to Indastructa! 🎉
+Thank you for your interest in contributing to Indastructa!
 
-##  Quick Start
+## Quick Start
 
 ### 1. Fork and Clone
 ```bash
@@ -88,24 +88,38 @@ pre-commit run --all-files
 
 ## Release Process (for maintainers)
 
-### Development Releases (TestPyPI)
-```bash
-# Push to dev branch
-git push origin dev
-# CI automatically publishes to TestPyPI
-```
+This project uses a "Staging -> Production" release model with manual approval.
 
-### Stable Releases (PyPI)
-```bash
-# Update version
-python scripts/release.py major  # or minor/patch
+### 1. Prepare the Release
+- Ensure the `dev` branch is up-to-date and all changes are merged.
+- Create and merge a Pull Request from `dev` into `main`.
+- Switch to the `main` branch and pull the latest changes:
+  ```bash
+  git checkout main
+  git pull origin main
+  ```
 
-# Push and tag
-git push origin main
-git push origin vX.Y.Z
+### 2. Run the Release Script
+- Run the local release script to bump the version, create a commit, and tag it.
+  ```bash
+  # For a patch release (e.g., 0.1.0 -> 0.1.1)
+  python scripts/release.py patch
 
-# CI automatically publishes to PyPI
-```
+  # For a minor release (e.g., 0.1.1 -> 0.2.0)
+  python scripts/release.py minor
+  ```
+
+### 3. Push to Trigger Publication
+- Push the newly created commit and tag to GitHub. This will trigger the `build-and-publish.yml` workflow.
+  ```bash
+  git push && git push --tags
+  ```
+
+### 4. Approve the Production Release
+- The workflow will automatically publish the new version to **TestPyPI**.
+- It will then pause before publishing to the main **PyPI**, waiting for your approval.
+- Go to the "Actions" tab in the GitHub repository, find the running workflow, and click "Review deployments".
+- After verifying the package on TestPyPI, click "Approve and deploy" to publish to PyPI.
 
 ---
 
@@ -149,8 +163,10 @@ Before submitting PR, ensure:
 
 ---
 
-## Thank You!
+### Developer Note on Dependencies
 
-Your contributions make Indastructa better for everyone!
+Currently, this project has zero external dependencies. If dependencies from PyPI are added in the future, the command to install from TestPyPI should be updated to use `--extra-index-url` to ensure those dependencies are found:
 
-Questions? Feel free to open an issue or discussion.
+```bash
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ indastructa
+```

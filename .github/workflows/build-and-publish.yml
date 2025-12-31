@@ -1,0 +1,116 @@
+# This workflow handles the build and publication process.
+# It can be triggered manually or by pushing a tag.
+name: Build and Publish
+
+on:
+  # Allows manual runs from the Actions tab
+  workflow_dispatch:
+    inputs:
+      version_part:
+        description: 'Version part to bump (major, minor, patch) for manual release'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      target:
+        description: 'Target repository'
+        required: true
+        type: choice
+        options:
+          - testpypi
+          - pypi
+
+  # Triggers on pushing a tag like v0.1.0
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        # Fetch all history for git commands in release script
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install toml requests pytest
+          pip install .
+
+      - name: Bump version, commit, and tag (if manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          python scripts/release.py ${{ github.event.inputs.version_part }} --yes
+          # The script creates the tag, now we push it to trigger the tag-based workflow
+          git push --tags
+          git push
+
+      - name: Run release check test
+        # This test checks if the version already exists on the target PyPI.
+        # It only runs in this release workflow.
+        env:
+          CI_RELEASE_CHECK: "true"
+          PYPI_TARGET: "pypi" # Always check against the main PyPI for official releases
+        run: pytest tests/test_publication_to_pipy.py
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build package
+        run: |
+          pip install build
+          python -m build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ steps.get_version.outputs.VERSION }}
+          path: dist/
+
+  publish-to-testpypi:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.build-and-test.outputs.version }}
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.TESTPYPI_API_TOKEN }}
+
+  publish-to-pypi:
+    needs: [build-and-test, publish-to-testpypi]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/indastructa
+    permissions:
+      id-token: write # Required for trusted publishing
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ needs.build-and-test.outputs.version }}
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,3 +1,8 @@
+"""
+Тесты для CLI инструмента indastructa.
+Проверяет генерацию структуры проекта, фильтрацию и различные опции.
+"""
+
 import pytest
 from pathlib import Path
 import sys
@@ -210,14 +215,14 @@ def test_format_dir_structure_with_patterns(project_structure: Path):
 # ============================================================================
 
 
-def test_main_default_behavior(project_structure: Path, monkeypatch):
+def test_main_default_behavior(project_structure: Path, monkeypatch, capsys):
     """
     Test main() with default settings.
     Should apply default exclusions and parse .gitignore.
     """
     output_file = project_structure / "project_structure.txt"
 
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure), "--quiet"])
 
     main()
 
@@ -248,7 +253,7 @@ def test_main_default_behavior(project_structure: Path, monkeypatch):
 
 def test_main_creates_output_file(simple_structure: Path, monkeypatch):
     """Test that main() creates the output file."""
-    monkeypatch.setattr("sys.argv", ["indastructa", str(simple_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(simple_structure), "--quiet"])
 
     main()
 
@@ -260,7 +265,7 @@ def test_main_creates_output_file(simple_structure: Path, monkeypatch):
 
 def test_main_output_file_encoding(project_structure: Path, monkeypatch):
     """Test that output file is UTF-8 encoded."""
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure), "--quiet"])
 
     main()
 
@@ -280,7 +285,7 @@ def test_main_with_depth_limit_1(project_structure: Path, monkeypatch):
     """Test --depth 1 shows only top-level files and directories."""
     output_file = project_structure / "project_structure.txt"
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(project_structure), "--depth", "1"]
+        "sys.argv", ["indastructa", str(project_structure), "--depth", "1", "--quiet"]
     )
 
     main()
@@ -303,7 +308,7 @@ def test_main_with_depth_limit_2(project_structure: Path, monkeypatch):
     """Test --depth 2 shows files up to 2 levels deep."""
     output_file = project_structure / "project_structure.txt"
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(project_structure), "--depth", "2"]
+        "sys.argv", ["indastructa", str(project_structure), "--depth", "2", "--quiet"]
     )
 
     main()
@@ -323,7 +328,7 @@ def test_main_with_depth_zero(project_structure: Path, monkeypatch):
     """Test --depth 0 shows only the root directory."""
     output_file = project_structure / "project_structure.txt"
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(project_structure), "--depth", "0"]
+        "sys.argv", ["indastructa", str(project_structure), "--depth", "0", "--quiet"]
     )
 
     main()
@@ -340,7 +345,7 @@ def test_main_with_depth_zero(project_structure: Path, monkeypatch):
 def test_main_with_unlimited_depth(nested_structure: Path, monkeypatch):
     """Test that without --depth, all levels are shown."""
     output_file = nested_structure / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(nested_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(nested_structure), "--quiet"])
 
     main()
 
@@ -357,7 +362,8 @@ def test_main_with_single_exclude(project_structure: Path, monkeypatch):
     """Test --exclude with a single pattern."""
     output_file = project_structure / "project_structure.txt"
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(project_structure), "--exclude", "src"]
+        "sys.argv",
+        ["indastructa", str(project_structure), "--exclude", "src", "--quiet"],
     )
 
     main()
@@ -375,7 +381,8 @@ def test_main_with_comma_separated_exclude(project_structure: Path, monkeypatch)
     """Test --exclude with comma-separated values."""
     output_file = project_structure / "project_structure.txt"
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(project_structure), "--exclude", "*.md,docs"]
+        "sys.argv",
+        ["indastructa", str(project_structure), "--exclude", "*.md,docs", "--quiet"],
     )
 
     main()
@@ -407,6 +414,7 @@ def test_main_with_multiple_exclude_flags(project_structure: Path, monkeypatch):
             "*.md",
             "--exclude",
             "docs",
+            "--quiet",
         ],
     )
 
@@ -424,7 +432,13 @@ def test_main_with_multiple_patterns(project_structure: Path, monkeypatch):
     output_file = project_structure / "project_structure.txt"
     monkeypatch.setattr(
         "sys.argv",
-        ["indastructa", str(project_structure), "--exclude", "*.md,*.toml,tests"],
+        [
+            "indastructa",
+            str(project_structure),
+            "--exclude",
+            "*.md,*.toml,tests",
+            "--quiet",
+        ],
     )
 
     main()
@@ -441,7 +455,8 @@ def test_main_exclude_overrides_defaults(project_structure: Path, monkeypatch):
     """Test that custom --exclude works alongside default exclusions."""
     output_file = project_structure / "project_structure.txt"
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(project_structure), "--exclude", "src"]
+        "sys.argv",
+        ["indastructa", str(project_structure), "--exclude", "src", "--quiet"],
     )
 
     main()
@@ -462,7 +477,7 @@ def test_main_with_custom_output_file(simple_structure: Path, monkeypatch):
     default_name = "project_structure.txt"
 
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(simple_structure), "-o", custom_name]
+        "sys.argv", ["indastructa", str(simple_structure), "-o", custom_name, "--quiet"]
     )
 
     main()
@@ -511,7 +526,8 @@ def test_main_with_include_overrides_default_exclusion(
     output_file = project_structure / "project_structure.txt"
     # .env is in the default EXCLUDE_SET
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(project_structure), "--include", ".env"]
+        "sys.argv",
+        ["indastructa", str(project_structure), "--include", ".env", "--quiet"],
     )
 
     main()
@@ -527,7 +543,8 @@ def test_main_with_include_overrides_gitignore(project_structure: Path, monkeypa
     output_file = project_structure / "project_structure.txt"
     # app.log is excluded by *.log in .gitignore
     monkeypatch.setattr(
-        "sys.argv", ["indastructa", str(project_structure), "--include", "app.log"]
+        "sys.argv",
+        ["indastructa", str(project_structure), "--include", "app.log", "--quiet"],
     )
 
     main()
@@ -552,6 +569,7 @@ def test_main_with_include_overrides_exclude_flag(project_structure: Path, monke
             "*.log",
             "--include",
             "app.log",
+            "--quiet",
         ],
     )
 
@@ -573,7 +591,7 @@ def test_main_with_include_overrides_exclude_flag(project_structure: Path, monke
 def test_gitignore_patterns_respected(project_structure: Path, monkeypatch):
     """Test that patterns from .gitignore are excluded."""
     output_file = project_structure / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure), "--quiet"])
 
     main()
 
@@ -590,7 +608,7 @@ def test_gitignore_patterns_respected(project_structure: Path, monkeypatch):
 def test_gitignore_itself_included(project_structure: Path, monkeypatch):
     """Test that .gitignore file itself is included in output."""
     output_file = project_structure / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure), "--quiet"])
 
     main()
 
@@ -603,7 +621,7 @@ def test_gitignore_itself_included(project_structure: Path, monkeypatch):
 def test_project_without_gitignore(simple_structure: Path, monkeypatch):
     """Test behavior when no .gitignore exists."""
     output_file = simple_structure / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(simple_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(simple_structure), "--quiet"])
 
     # Should not crash
     main()
@@ -676,7 +694,7 @@ def test_empty_project_structure(tmp_path: Path, monkeypatch):
     empty_dir.mkdir()
 
     output_file = empty_dir / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(empty_dir)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(empty_dir), "--quiet"])
 
     main()
 
@@ -695,7 +713,7 @@ def test_empty_project_structure(tmp_path: Path, monkeypatch):
 def test_output_format_has_tree_structure(simple_structure: Path, monkeypatch):
     """Test that output uses proper tree formatting characters."""
     output_file = simple_structure / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(simple_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(simple_structure), "--quiet"])
 
     main()
 
@@ -708,7 +726,7 @@ def test_output_format_has_tree_structure(simple_structure: Path, monkeypatch):
 def test_output_has_header(project_structure: Path, monkeypatch):
     """Test that output includes a header."""
     output_file = project_structure / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure), "--quiet"])
 
     main()
 
@@ -726,7 +744,7 @@ def test_output_has_header(project_structure: Path, monkeypatch):
 def test_output_directories_marked(project_structure: Path, monkeypatch):
     """Test that directories are clearly marked (usually with /)."""
     output_file = project_structure / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project_structure), "--quiet"])
 
     main()
 
@@ -764,7 +782,7 @@ def test_typical_python_project(tmp_path: Path, monkeypatch):
     (project / "venv").mkdir()
 
     output_file = project / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project), "--quiet"])
 
     main()
 
@@ -793,7 +811,7 @@ def test_project_with_multiple_gitignores(tmp_path: Path, monkeypatch):
     (project / "subdir" / "file.txt").touch()
 
     output_file = project / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project), "--quiet"])
 
     main()
 
@@ -829,7 +847,7 @@ def test_large_directory_structure(tmp_path: Path, monkeypatch):
             (subdir / f"file_{f:02d}.txt").touch()
 
     output_file = project / "project_structure.txt"
-    monkeypatch.setattr("sys.argv", ["indastructa", str(project)])
+    monkeypatch.setattr("sys.argv", ["indastructa", str(project), "--quiet"])
 
     # Should complete without timeout
     import time
@@ -867,7 +885,7 @@ def test_main_without_arguments(monkeypatch, tmp_path):
 
     (tmp_path / "file_in_cwd.txt").touch()
 
-    monkeypatch.setattr("sys.argv", ["indastructa"])
+    monkeypatch.setattr("sys.argv", ["indastructa", "--quiet"])
 
     main()
 

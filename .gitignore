@@ -119,6 +119,7 @@ user_stories.md
 /PUBLISHING_GUIDE.md
 /indastructa.py
 PUBLISHING_GUIDE.md
-WORKFLOW_GUIDE.md
 /.github/workflows/publish-to-testpypi.yml.backup.txt
 .pytest_tmp
+/.github/workflows/_publish.yml._bak
+/WORKFLOW_GUIDE.md
