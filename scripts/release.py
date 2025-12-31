@@ -102,16 +102,11 @@ def main():
     current_branch = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True
     ).stdout.strip()
-    if (
-        current_branch != "main"
-        and not args.yes
-        and input(
-            f"Warning: You are on branch '{current_branch}', not 'main'. Continue anyway? (y/N): "
-        ).lower()
-        != "y"
-    ):
-        print("Aborted.")
-        sys.exit(0)
+    if current_branch != "main" and not args.yes:
+        print(f"Warning: You are on branch '{current_branch}', not 'main'.")
+        if input("Continue anyway? (y/N): ").lower() != "y":
+            print("Aborted.")
+            sys.exit(0)
 
     # --- Planning ---
     current_version = get_project_info()[1]
