@@ -3,6 +3,7 @@ import sys
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 import toml
+import subprocess
 
 # Add the parent directory to the path so we can import the release script
 sys.path.append(str(Path(__file__).parent.parent))
@@ -36,6 +37,9 @@ def mock_git_clean(monkeypatch):
     return mock_run
 
 
+# --- Unit Tests for Helper Functions ---
+
+
 def test_bump_version_string():
     """Tests the version bumping logic."""
     assert r.bump_version_string("1.2.3", "patch") == "1.2.4"
@@ -44,15 +48,44 @@ def test_bump_version_string():
     assert r.bump_version_string("1.9.10", "minor") == "1.10.0"
 
 
+def test_bump_version_string_invalid_part():
+    """Tests that bumping with an invalid part exits the script."""
+    with pytest.raises(SystemExit):
+        r.bump_version_string("1.2.3", "invalid_part")
+
+
+def test_get_project_info_no_file(capsys):
+    """Tests behavior when pyproject.toml is missing."""
+    with patch("release.PYPROJECT_PATH", Path("non_existent_file.toml")):
+        with pytest.raises(SystemExit):
+            r.get_project_info()
+    captured = capsys.readouterr()
+    assert "Error: pyproject.toml not found" in captured.out
+
+
+def test_run_command_error(capsys):
+    """Tests that run_command exits and prints stderr on failure."""
+    with patch(
+        "release.subprocess.run",
+        side_effect=subprocess.CalledProcessError(1, "cmd", stderr="git error"),
+    ):
+        with pytest.raises(SystemExit):
+            r.run_command(["git", "fail"], "Test failure")
+    captured = capsys.readouterr()
+    assert "Error: Test failure" in captured.out
+    assert "Stderr: git error" in captured.out
+
+
+# --- Integration-like Tests for main() ---
+
+
 def test_main_successful_patch_release(mock_pyproject, mock_git_clean, monkeypatch):
     """Tests a successful patch release scenario with user confirmation."""
     monkeypatch.setattr(sys, "argv", ["release.py", "patch"])
 
-    # Mock user input to confirm
     with patch("builtins.input", return_value="y"):
         r.main()
 
-    # Check that all 5 git commands were called
     assert mock_git_clean.call_count == 5
     mock_git_clean.assert_any_call(
         ["git", "add", str(mock_pyproject)], check=True, capture_output=True, text=True
@@ -67,19 +100,14 @@ def test_main_successful_patch_release(mock_pyproject, mock_git_clean, monkeypat
         ["git", "tag", "v1.2.4"], check=True, capture_output=True, text=True
     )
 
-    # Check that the version was updated
     config = toml.load(mock_pyproject)
     assert config["project"]["version"] == "1.2.4"
 
 
 def test_main_aborted_by_user(mock_pyproject, monkeypatch, capsys):
     """Tests that the script aborts if the user does not confirm."""
-    # We only need to mock the first two git calls for this scenario
     mock_run = MagicMock()
-    mock_run.side_effect = [
-        MagicMock(stdout=""),
-        MagicMock(stdout="main"),
-    ]
+    mock_run.side_effect = [MagicMock(stdout=""), MagicMock(stdout="main")]
     monkeypatch.setattr("release.subprocess.run", mock_run)
     monkeypatch.setattr(sys, "argv", ["release.py", "minor"])
 
@@ -87,25 +115,18 @@ def test_main_aborted_by_user(mock_pyproject, monkeypatch, capsys):
         with pytest.raises(SystemExit):
             r.main()
 
-    # Only git status and branch checks should have been called
     assert mock_run.call_count == 2
-
-    # Version should NOT be updated
     config = toml.load(mock_pyproject)
     assert config["project"]["version"] == "1.2.3"
-
-    captured = capsys.readouterr()
-    assert "Aborted." in captured.out
+    assert "Aborted." in capsys.readouterr().out
 
 
 def test_main_with_yes_flag(mock_pyproject, mock_git_clean, monkeypatch):
     """Tests that the --yes flag skips confirmation."""
     monkeypatch.setattr(sys, "argv", ["release.py", "major", "--yes"])
 
-    # No input should be requested, so no need to mock it.
     r.main()
 
-    # Check that all 5 git commands were called
     assert mock_git_clean.call_count == 5
     mock_git_clean.assert_any_call(
         ["git", "commit", "-m", "chore: Release v2.0.0"],
@@ -117,7 +138,6 @@ def test_main_with_yes_flag(mock_pyproject, mock_git_clean, monkeypatch):
         ["git", "tag", "v2.0.0"], check=True, capture_output=True, text=True
     )
 
-    # Check that the version was updated
     config = toml.load(mock_pyproject)
     assert config["project"]["version"] == "2.0.0"
 
@@ -133,7 +153,6 @@ def test_main_dirty_working_directory(mock_pyproject, monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "Error: Your working directory is not clean." in captured.out
-    # Check that it shows the status
     mock_run.assert_called_with(
         ["git", "status", "--porcelain"], capture_output=True, text=True
     )
@@ -143,8 +162,8 @@ def test_main_wrong_branch_and_abort(mock_pyproject, monkeypatch, capsys):
     """Tests the warning on a wrong branch and user abort."""
     mock_run = MagicMock()
     mock_run.side_effect = [
-        MagicMock(stdout=""),  # git status is clean
-        MagicMock(stdout="feature-branch"),  # git branch is not main
+        MagicMock(stdout=""),
+        MagicMock(stdout="feature-branch"),
     ]
     monkeypatch.setattr("release.subprocess.run", mock_run)
     monkeypatch.setattr(sys, "argv", ["release.py", "patch"])
@@ -162,19 +181,17 @@ def test_main_wrong_branch_and_proceed(mock_pyproject, monkeypatch):
     """Tests proceeding on a wrong branch after confirmation."""
     mock_run = MagicMock()
     mock_run.side_effect = [
-        MagicMock(stdout=""),  # 1. git status is clean
-        MagicMock(stdout="feature-branch"),  # 2. git branch is not main
-        MagicMock(),  # 3. git add
-        MagicMock(),  # 4. git commit
-        MagicMock(),  # 5. git tag
+        MagicMock(stdout=""),
+        MagicMock(stdout="feature-branch"),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
     ]
     monkeypatch.setattr("release.subprocess.run", mock_run)
     monkeypatch.setattr(sys, "argv", ["release.py", "patch"])
 
-    # First input for branch warning, second for release confirmation
     with patch("builtins.input", side_effect=["y", "y"]):
         r.main()
 
-    # Check that version was updated
     config = toml.load(mock_pyproject)
     assert config["project"]["version"] == "1.2.4"
