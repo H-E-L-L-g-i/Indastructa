@@ -35,16 +35,16 @@ pip install indastructa
 
 > <details>
 > <summary><u>Розширено: Встановлення з TestPyPI</u> (натисніть, щоб розкрити)</summary>
-> 
+>
 > TestPyPI — це наше тестове середовище для перевірки релізів перед публікацією на PyPI.
-> 
+>
 > Версії тут можуть бути новішими, старішими або збігатися з основною версією — використовуйте лише для тестування.
-> 
+>
 > Щоб встановити з TestPyPI:
 > ```bash
 > pip install -i https://test.pypi.org/simple/ indastructa
 > ```
-> 
+>
 > Останні тестові версії: https://test.pypi.org/project/indastructa/
 >
 > </details>
