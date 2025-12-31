@@ -4,17 +4,27 @@ This document contains ideas for new features that could be implemented in the f
 
 ---
 
-## High Priority (Before v1.0.0)
+## High Priority (Next Steps)
 
-- [ ] **Add `--yes` flag to `scripts/release.py`**: To skip confirmation prompts, which is essential for automation and CI/CD scripts.
-- [ ] **Create `CONTRIBUTING.md`**: To lower the barrier for new contributors by providing clear guidelines for setup, testing, and pull requests.
-- [ ] **Add Badges to `README.md`**: To give the project a professional look and provide at-a-glance information about its status (PyPI version, tests, coverage, etc.).
+- [ ] **Create Manual Workflow for TestPyPI Releases**:
+  - **Goal**: To be able to publish "stable" (e.g., `0.2.0`) versions to TestPyPI for a final check before the official release.
+  - **Implementation**:
+    - Create a new workflow file, e.g., `.github/workflows/release-to-testpypi.yml`.
+    - Trigger this workflow manually using `workflow_dispatch`.
+    - The workflow should ask for the version part to bump (`major`, `minor`, `patch`) as an input.
+    - It will check out the `dev` branch, run `scripts/release.py` with the provided part and the `--yes` flag, build the package, and publish it to **TestPyPI**.
+  - **Benefit**: Provides a safe, reproducible "staging" environment for stable releases without requiring local tokens.
+
+- [ ] **Implement Git Status Check in `scripts/release.py`**: To prevent releases from a "dirty" working directory, ensuring that the release tag corresponds to a clean, committed state.
+
+- [ ] **Add `--quiet` / `-q` flag to `indastructa`**: To suppress console output and only save the structure to a file, making the tool more "unix-friendly" and usable in pipelines.
+
+- [ ] **Add More Examples to READMEs**: Enhance both `README.md` and `README_ua.md` with more real-world examples of using the CLI tool.
 
 ## Medium Priority (After v1.0.0)
 
-- [ ] **Implement Git Status Check in `scripts/release.py`**: To prevent releases from a "dirty" working directory, ensuring that the release tag corresponds to a clean, committed state.
-- [ ] **Add `--quiet` / `-q` flag to `indastructa`**: To suppress console output and only save the structure to a file, making the tool more "unix-friendly" and usable in pipelines.
-- [ ] **Add More Examples to READMEs**: Enhance both `README.md` and `README_ua.md` with more real-world examples of using the CLI tool.
+- [ ] **Create `CONTRIBUTING.md`**: To lower the barrier for new contributors by providing clear guidelines for setup, testing, and pull requests.
+- [ ] **Add Badges to `README.md`**: To give the project a professional look and provide at-a-glance information about its status (PyPI version, tests, coverage, etc.).
 
 ## Low Priority (Future Enhancements)
 
@@ -26,3 +36,4 @@ This document contains ideas for new features that could be implemented in the f
 ---
 
 *This plan was formulated based on the expert suggestions provided on 2024-05-15.*
+*The "Adult" release script idea is documented in `docs/release_workflow.md`.*

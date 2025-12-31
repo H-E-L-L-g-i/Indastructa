@@ -4,7 +4,7 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/indastructa.svg)](https://pypi.org/project/indastructa/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/H-E-L-L-g-i/Indastructa/actions/workflows/ci.yml/badge.svg)](https://github.com/H-E-L-L-g-i/Indastructa/actions)
-[![codecov](https://codecov.io/gh/H-E-L-L-g-i/Indastructa/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/H-E-L-L-g-i/Indastructa)
+[![codecov](https://codecov.io/gh/H-E-L-L-g-i/Indastructa/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/H-E-L-L-g-i/Indastructa/tree/main)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
 **Indastructa** — це зручний CLI-інструмент для швидкого створення наочного ASCII-дерева файлової структури вашого проєкту.
