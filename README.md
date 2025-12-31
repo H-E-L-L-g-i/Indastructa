@@ -34,17 +34,17 @@ pip install indastructa
 ```
 
 > <details>
-> <summary><b>Advanced: Installing from TestPyPI</b></summary>
->
+> <summary><u>Advanced: Installing from TestPyPI</u> (click to expand)</summary>
+> 
 > TestPyPI is our testing environment for validating releases before publishing to PyPI.
->
+> 
 >  Versions there may be newer, older, or match the production release - use for testing purposes only.
->
+> 
 > To install from TestPyPI:
 > ```bash
 > pip install -i https://test.pypi.org/simple/ indastructa
 > ```
->
+> 
 > Latest test version: https://test.pypi.org/project/indastructa/
 >
 > </details>
