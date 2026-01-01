@@ -1,9 +1,12 @@
 import argparse
 import sys
 from pathlib import Path
+import textwrap
 import re
 import subprocess
+from typing import Optional
 
+import requests
 import toml
 
 # --- Configuration ---
@@ -23,8 +26,7 @@ def get_project_info() -> tuple[str, str]:
     if not name or not version:
         print(
             "Error: 'name' or 'version' not found in [project] section "
-            " of 'pyproject.toml' file"
-        )
+            " of 'pyproject.toml' file")
         sys.exit(1)
     return name, version
 
@@ -35,7 +37,7 @@ def bump_version_string(current_version: str, part: str) -> str:
     if not match:
         print(f"Error: Invalid version format: {current_version}")
         sys.exit(1)
-
+        
     major, minor, patch = map(int, match.groups()[:3])
 
     if part == "major":
@@ -50,7 +52,7 @@ def bump_version_string(current_version: str, part: str) -> str:
     else:
         print(f"Error: Unknown version part: {part}")
         sys.exit(1)
-
+        
     return f"{major}.{minor}.{patch}"
 
 
@@ -76,35 +78,21 @@ def run_command(command: list, error_msg: str):
 
 def main():
     """Main script logic."""
-    parser = argparse.ArgumentParser(
-        description="Prepares a new release by updating version, creating a commit and a tag."
-    )
-    parser.add_argument(
-        "part",
-        choices=["major", "minor", "patch"],
-        help="The part of the version to increment.",
-    )
-    parser.add_argument(
-        "-y", "--yes", action="store_true", help="Skip confirmation prompts."
-    )
+    parser = argparse.ArgumentParser(description="Prepares a new release by updating version, creating a commit and a tag.")
+    parser.add_argument("part", choices=["major", "minor", "patch"], help="The part of the version to increment.")
+    parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompts.")
     args = parser.parse_args()
 
     # --- Pre-flight checks ---
     print("Performing pre-flight checks...")
-    if subprocess.run(
-        ["git", "status", "--porcelain"], capture_output=True, text=True
-    ).stdout:
-        print(
-            "Error: Your working directory is not clean. Please commit or stash your changes."
-        )
+    if subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout:
+        print("Error: Your working directory is not clean. Please commit or stash your changes.")
         sys.exit(1)
 
-    current_branch = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True
-    ).stdout.strip()
+    current_branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True).stdout.strip()
     if current_branch != "main" and not args.yes:
         print(f"Warning: You are on branch '{current_branch}', not 'main'.")
-        if input("Continue anyway? (y/N): ").lower() != "y":
+        if input("Continue anyway? (y/N): ").lower() != 'y':
             print("Aborted.")
             sys.exit(0)
 
@@ -118,22 +106,26 @@ def main():
     print(f"  - New version:     {new_version}")
     print(f"  - Tag to create:   {tag_name}")
 
-    if not args.yes and input("\nProceed with these actions? (y/N): ").lower() != "y":
+    if not args.yes and input("\nProceed with these actions? (y/N): ").lower() != 'y':
         print("Aborted.")
         sys.exit(0)
 
     # --- Execution ---
     print("\nExecuting release...")
     update_pyproject_toml(new_version)
-
+    
     print("Creating release commit and tag...")
     run_command(["git", "add", str(PYPROJECT_PATH)], "Failed to stage pyproject.toml")
-    # You might want to add CHANGELOG.md here as well if you update it
-    # run_command(["git", "add", str(CHANGELOG_PATH)], "Failed to stage CHANGELOG.md")
-
+    
     commit_message = f"chore: Release {tag_name}"
     run_command(["git", "commit", "-m", commit_message], "Failed to create commit")
-    run_command(["git", "tag", tag_name], f"Failed to create tag {tag_name}")
+
+    # Check if tag already exists before creating
+    existing_tags = subprocess.run(["git", "tag"], capture_output=True, text=True).stdout.splitlines()
+    if tag_name in existing_tags:
+        print(f"Warning: Tag {tag_name} already exists. Skipping tag creation.")
+    else:
+        run_command(["git", "tag", tag_name], f"Failed to create tag {tag_name}")
 
     print("\nDone.")
     print("NEXT STEP: Push the commit and tag to trigger the release workflow:")
