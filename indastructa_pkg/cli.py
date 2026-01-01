@@ -62,11 +62,11 @@ Examples:
     indastructa ./src --depth 3 --exclude "*.pyc" --include ".env" -q -o out.txt
 
 Tips:
-   • Use quotes around patterns with wildcards: "*.log"
-   • Separate multiple patterns with commas: "*.pyc,*.pyo"
-   • A file matching --include will be shown even if it also matches --exclude.
-   • Default output: {OUTPUT_FILENAME.name}
-   • Default depth: unlimited (-1)
+   - Use quotes around patterns with wildcards: "*.log"
+   - Separate multiple patterns with commas: "*.pyc,*.pyo"
+   - A file matching --include will be shown even if it also matches --exclude.
+   - Default output: {OUTPUT_FILENAME.name}
+   - Default depth: unlimited (-1)
 """
 
 
