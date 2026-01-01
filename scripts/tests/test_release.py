@@ -31,7 +31,7 @@ def mock_git_clean(monkeypatch):
         MagicMock(stdout="main"),  # 2. git rev-parse (on main branch)
         MagicMock(),  # 3. git add
         MagicMock(),  # 4. git commit
-        MagicMock(stdout=""),  # 5. git tag (list)
+        MagicMock(stdout=""),  # 5. git tag (list) -> returns no existing tags
         MagicMock(),  # 6. git tag (create)
     ]
     monkeypatch.setattr("release.subprocess.run", mock_run)
@@ -197,3 +197,25 @@ def test_main_wrong_branch_and_proceed(mock_pyproject, monkeypatch):
 
     config = toml.load(mock_pyproject)
     assert config["project"]["version"] == "1.2.4"
+
+
+def test_main_tag_already_exists(mock_pyproject, monkeypatch, capsys):
+    """Tests that the script warns but continues if the tag already exists."""
+    mock_run = MagicMock()
+    mock_run.side_effect = [
+        MagicMock(stdout=""),
+        MagicMock(stdout="main"),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(stdout="v1.2.4\nv1.2.3"),  # git tag list contains the new tag
+    ]
+    monkeypatch.setattr("release.subprocess.run", mock_run)
+    monkeypatch.setattr(sys, "argv", ["release.py", "patch", "--yes"])
+
+    r.main()
+
+    captured = capsys.readouterr()
+    assert "Warning: Tag v1.2.4 already exists. Skipping tag creation." in captured.out
+    # Check that 'git tag' was not called for creation
+    # 1. status, 2. branch, 3. add, 4. commit, 5. tag list
+    assert mock_run.call_count == 5
