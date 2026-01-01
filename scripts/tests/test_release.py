@@ -31,7 +31,8 @@ def mock_git_clean(monkeypatch):
         MagicMock(stdout="main"),  # 2. git rev-parse (on main branch)
         MagicMock(),  # 3. git add
         MagicMock(),  # 4. git commit
-        MagicMock(),  # 5. git tag
+        MagicMock(stdout=""),  # 5. git tag (list)
+        MagicMock(),  # 6. git tag (create)
     ]
     monkeypatch.setattr("release.subprocess.run", mock_run)
     return mock_run
@@ -86,7 +87,7 @@ def test_main_successful_patch_release(mock_pyproject, mock_git_clean, monkeypat
     with patch("builtins.input", return_value="y"):
         r.main()
 
-    assert mock_git_clean.call_count == 5
+    assert mock_git_clean.call_count == 6
     mock_git_clean.assert_any_call(
         ["git", "add", str(mock_pyproject)], check=True, capture_output=True, text=True
     )
@@ -127,7 +128,7 @@ def test_main_with_yes_flag(mock_pyproject, mock_git_clean, monkeypatch):
 
     r.main()
 
-    assert mock_git_clean.call_count == 5
+    assert mock_git_clean.call_count == 6
     mock_git_clean.assert_any_call(
         ["git", "commit", "-m", "chore: Release v2.0.0"],
         check=True,
@@ -185,6 +186,7 @@ def test_main_wrong_branch_and_proceed(mock_pyproject, monkeypatch):
         MagicMock(stdout="feature-branch"),
         MagicMock(),
         MagicMock(),
+        MagicMock(stdout=""),
         MagicMock(),
     ]
     monkeypatch.setattr("release.subprocess.run", mock_run)
