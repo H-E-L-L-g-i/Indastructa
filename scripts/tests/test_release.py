@@ -5,11 +5,8 @@ from pathlib import Path
 import toml
 import subprocess
 
-# Add the parent directory to the path so we can import the release script
-sys.path.append(str(Path(__file__).parent.parent))
-
-# Import the script to be tested
-import release as r
+# Import the script using its full path from the project root
+from scripts import release as r
 
 
 @pytest.fixture
@@ -17,23 +14,23 @@ def mock_pyproject(tmp_path):
     """Creates a mock pyproject.toml file and patches the script's path."""
     pyproject_path = tmp_path / "pyproject.toml"
     pyproject_path.write_text('[project]\nname = "my-package"\nversion = "1.2.3"')
-    with patch("release.PYPROJECT_PATH", pyproject_path):
+    with patch("scripts.release.PYPROJECT_PATH", pyproject_path):
         yield pyproject_path
 
 
 @pytest.fixture
 def mock_git_clean(monkeypatch):
-    """Mocks git commands to simulate a clean repository on the main branch."""
+    """Mocks git commands to simulate a clean repository on the main branch for a full successful run."""
     mock_run = MagicMock()
-    # Provide enough mock results for a full successful run
     mock_run.side_effect = [
         MagicMock(stdout=""),  # 1. git status --porcelain (clean)
         MagicMock(stdout="main"),  # 2. git rev-parse (on main branch)
         MagicMock(),  # 3. git add
         MagicMock(),  # 4. git commit
-        MagicMock(),  # 5. git tag
+        MagicMock(stdout=""),  # 5. git tag (list) -> returns no existing tags
+        MagicMock(),  # 6. git tag (create)
     ]
-    monkeypatch.setattr("release.subprocess.run", mock_run)
+    monkeypatch.setattr("scripts.release.subprocess.run", mock_run)
     return mock_run
 
 
@@ -56,7 +53,7 @@ def test_bump_version_string_invalid_part():
 
 def test_get_project_info_no_file(capsys):
     """Tests behavior when pyproject.toml is missing."""
-    with patch("release.PYPROJECT_PATH", Path("non_existent_file.toml")):
+    with patch("scripts.release.PYPROJECT_PATH", Path("non_existent_file.toml")):
         with pytest.raises(SystemExit):
             r.get_project_info()
     captured = capsys.readouterr()
@@ -66,7 +63,7 @@ def test_get_project_info_no_file(capsys):
 def test_run_command_error(capsys):
     """Tests that run_command exits and prints stderr on failure."""
     with patch(
-        "release.subprocess.run",
+        "scripts.release.subprocess.run",
         side_effect=subprocess.CalledProcessError(1, "cmd", stderr="git error"),
     ):
         with pytest.raises(SystemExit):
@@ -86,7 +83,7 @@ def test_main_successful_patch_release(mock_pyproject, mock_git_clean, monkeypat
     with patch("builtins.input", return_value="y"):
         r.main()
 
-    assert mock_git_clean.call_count == 5
+    assert mock_git_clean.call_count == 6
     mock_git_clean.assert_any_call(
         ["git", "add", str(mock_pyproject)], check=True, capture_output=True, text=True
     )
@@ -108,7 +105,7 @@ def test_main_aborted_by_user(mock_pyproject, monkeypatch, capsys):
     """Tests that the script aborts if the user does not confirm."""
     mock_run = MagicMock()
     mock_run.side_effect = [MagicMock(stdout=""), MagicMock(stdout="main")]
-    monkeypatch.setattr("release.subprocess.run", mock_run)
+    monkeypatch.setattr("scripts.release.subprocess.run", mock_run)
     monkeypatch.setattr(sys, "argv", ["release.py", "minor"])
 
     with patch("builtins.input", return_value="n"):
@@ -127,7 +124,7 @@ def test_main_with_yes_flag(mock_pyproject, mock_git_clean, monkeypatch):
 
     r.main()
 
-    assert mock_git_clean.call_count == 5
+    assert mock_git_clean.call_count == 6
     mock_git_clean.assert_any_call(
         ["git", "commit", "-m", "chore: Release v2.0.0"],
         check=True,
@@ -145,7 +142,7 @@ def test_main_with_yes_flag(mock_pyproject, mock_git_clean, monkeypatch):
 def test_main_dirty_working_directory(mock_pyproject, monkeypatch, capsys):
     """Tests that the script exits if the git working directory is not clean."""
     mock_run = MagicMock(stdout=" M some_file.py")
-    monkeypatch.setattr("release.subprocess.run", mock_run)
+    monkeypatch.setattr("scripts.release.subprocess.run", mock_run)
     monkeypatch.setattr(sys, "argv", ["release.py", "patch"])
 
     with pytest.raises(SystemExit):
@@ -165,7 +162,7 @@ def test_main_wrong_branch_and_abort(mock_pyproject, monkeypatch, capsys):
         MagicMock(stdout=""),
         MagicMock(stdout="feature-branch"),
     ]
-    monkeypatch.setattr("release.subprocess.run", mock_run)
+    monkeypatch.setattr("scripts.release.subprocess.run", mock_run)
     monkeypatch.setattr(sys, "argv", ["release.py", "patch"])
 
     with patch("builtins.input", return_value="n"):
@@ -185,9 +182,10 @@ def test_main_wrong_branch_and_proceed(mock_pyproject, monkeypatch):
         MagicMock(stdout="feature-branch"),
         MagicMock(),
         MagicMock(),
+        MagicMock(stdout=""),
         MagicMock(),
     ]
-    monkeypatch.setattr("release.subprocess.run", mock_run)
+    monkeypatch.setattr("scripts.release.subprocess.run", mock_run)
     monkeypatch.setattr(sys, "argv", ["release.py", "patch"])
 
     with patch("builtins.input", side_effect=["y", "y"]):
@@ -195,3 +193,25 @@ def test_main_wrong_branch_and_proceed(mock_pyproject, monkeypatch):
 
     config = toml.load(mock_pyproject)
     assert config["project"]["version"] == "1.2.4"
+
+
+def test_main_tag_already_exists(mock_pyproject, monkeypatch, capsys):
+    """Tests that the script warns but continues if the tag already exists."""
+    mock_run = MagicMock()
+    mock_run.side_effect = [
+        MagicMock(stdout=""),
+        MagicMock(stdout="main"),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(stdout="v1.2.4\nv1.2.3"),  # git tag list contains the new tag
+    ]
+    monkeypatch.setattr("scripts.release.subprocess.run", mock_run)
+    monkeypatch.setattr(sys, "argv", ["release.py", "patch", "--yes"])
+
+    r.main()
+
+    captured = capsys.readouterr()
+    assert "Warning: Tag v1.2.4 already exists. Skipping tag creation." in captured.out
+    # Check that 'git tag' was not called for creation
+    # 1. status, 2. branch, 3. add, 4. commit, 5. tag list
+    assert mock_run.call_count == 5

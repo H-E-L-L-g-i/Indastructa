@@ -128,12 +128,18 @@ def main():
 
     print("Creating release commit and tag...")
     run_command(["git", "add", str(PYPROJECT_PATH)], "Failed to stage pyproject.toml")
-    # You might want to add CHANGELOG.md here as well if you update it
-    # run_command(["git", "add", str(CHANGELOG_PATH)], "Failed to stage CHANGELOG.md")
 
     commit_message = f"chore: Release {tag_name}"
     run_command(["git", "commit", "-m", commit_message], "Failed to create commit")
-    run_command(["git", "tag", tag_name], f"Failed to create tag {tag_name}")
+
+    # Check if tag already exists before creating
+    existing_tags = subprocess.run(
+        ["git", "tag"], capture_output=True, text=True
+    ).stdout.splitlines()
+    if tag_name in existing_tags:
+        print(f"Warning: Tag {tag_name} already exists. Skipping tag creation.")
+    else:
+        run_command(["git", "tag", tag_name], f"Failed to create tag {tag_name}")
 
     print("\nDone.")
     print("NEXT STEP: Push the commit and tag to trigger the release workflow:")
