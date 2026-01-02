@@ -18,7 +18,7 @@ on:
 
 # Set permissions for the entire workflow
 permissions:
-  contents: read
+  contents: write
   id-token: write # Required for trusted publishing to PyPI
 
 jobs:
@@ -33,6 +33,7 @@ jobs:
         with:
           # For manual dispatch, checkout the specified branch. For tags, it's the tagged commit.
           ref: ${{ github.event.inputs.branch || github.ref }}
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
