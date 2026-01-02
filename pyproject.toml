@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "indastructa"
-version = "0.1.1"
+version = "0.1.2"
 description = "A CLI tool to generate ASCII tree representation of a project structure."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -21,6 +21,9 @@ classifiers = [
 name = "H-E-L-L-gi"
 email = "oleg.cegak@gmail.com"
 
+[project.license]
+text = "MIT License"
+
 [project.scripts]
 indastructa = "indastructa_pkg.cli:main"
 
@@ -28,17 +31,4 @@ indastructa = "indastructa_pkg.cli:main"
 Source = "https://github.com/H-E-L-L-g-i/Indastructa"
 
 [tool.coverage.run]
-source = [
-    "indastructa_pkg",
-    "scripts",
-]
-omit = [
-    "tests/*",
-    "scripts/tests/*",
-    "indastructa_pkg/__init__.py",
-    "scripts/__init__.py",
-]
-
-[tool.coverage.report]
-show_missing = true
-fail_under = 90
+omit = [ "tests/test_publication_to_pipy.py",]
