@@ -4,19 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "indastructa"
-version = "0.1.1"
+version = "0.1.2"
 description = "A CLI tool to generate ASCII tree representation of a project structure."
 readme = "README.md"
 requires-python = ">=3.10"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Operating System :: OS Independent",
-    "Topic :: Utilities",
-]
+classifiers = [ "Programming Language :: Python :: 3", "Programming Language :: Python :: 3.10", "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "Programming Language :: Python :: 3.13", "Operating System :: OS Independent", "Topic :: Utilities",]
 [[project.authors]]
 name = "H-E-L-L-gi"
 email = "oleg.cegak@gmail.com"
@@ -31,16 +23,8 @@ indastructa = "indastructa_pkg.cli:main"
 Source = "https://github.com/H-E-L-L-g-i/Indastructa"
 
 [tool.coverage.run]
-source = [
-    "indastructa_pkg",
-    "scripts",
-]
-omit = [
-    "tests/*",
-    "scripts/tests/*",
-    "indastructa_pkg/__init__.py",
-    "scripts/__init__.py",
-]
+source = [ "indastructa_pkg", "scripts",]
+omit = [ "tests/*", "scripts/tests/*", "indastructa_pkg/__init__.py", "scripts/__init__.py",]
 
 [tool.coverage.report]
 show_missing = true
