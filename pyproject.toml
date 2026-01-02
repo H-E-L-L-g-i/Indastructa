@@ -31,4 +31,17 @@ indastructa = "indastructa_pkg.cli:main"
 Source = "https://github.com/H-E-L-L-g-i/Indastructa"
 
 [tool.coverage.run]
-omit = [ "tests/test_publication_to_pipy.py",]
+source = [
+    "indastructa_pkg",
+    "scripts",
+]
+omit = [
+    "tests/*",
+    "scripts/tests/*",
+    "indastructa_pkg/__init__.py",
+    "scripts/__init__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
